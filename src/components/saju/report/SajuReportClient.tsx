@@ -73,29 +73,6 @@ export default function SajuReportClient({
   const [birthTime, setBirthTime] = useState('unknown');
   const [calendar, setCalendar] = useState<'solar' | 'lunar'>('solar');
   const [usedMyInfo, setUsedMyInfo] = useState(false);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
-
-  const handleRedownload = async (report: CompletedReport) => {
-    setDownloadingId(report.id);
-    try {
-      const res = await fetch(`/api/saju/pdf/${report.id}`);
-      if (!res.ok) throw new Error('PDF 다운로드에 실패했습니다.');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `사주랩_${report.name}_종합분석리포트_${report.created_at.slice(0, 10)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'PDF 다운로드 중 오류가 발생했습니다.');
-    } finally {
-      setDownloadingId(null);
-    }
-  };
-
   const fillMyInfo = () => {
     if (!previousBirthInfo) return;
     setName(previousBirthInfo.name);
@@ -103,7 +80,9 @@ export default function SajuReportClient({
     setBirthYear(previousBirthInfo.birthYear.toString());
     setBirthMonth(previousBirthInfo.birthMonth.toString());
     setBirthDay(previousBirthInfo.birthDay.toString());
-    setBirthTime(previousBirthInfo.birthHour != null ? (SIJI_TO_HOUR[previousBirthInfo.birthHour] !== undefined ? Object.keys(SIJI_TO_HOUR).find(k => SIJI_TO_HOUR[k] === previousBirthInfo.birthHour) ?? 'unknown' : 'unknown') : 'unknown');
+    setBirthTime(previousBirthInfo.birthHour != null
+      ? (Object.keys(SIJI_TO_HOUR).find(k => SIJI_TO_HOUR[k] === previousBirthInfo.birthHour) ?? 'unknown')
+      : 'unknown');
     setCalendar(previousBirthInfo.isLunar ? 'lunar' : 'solar');
     setUsedMyInfo(true);
   };
@@ -191,7 +170,7 @@ export default function SajuReportClient({
         throw new Error(errData.error || 'AI 분석 생성에 실패했습니다.');
       }
 
-      // 스트림 전체 소비 → 서버의 onFinish(DB 저장)가 완료될 때까지 대기
+      // 스트림 전체 소비
       if (analyzeRes.body) {
         const reader = analyzeRes.body.getReader();
         while (true) {
@@ -204,6 +183,24 @@ export default function SajuReportClient({
 
       setProgress(87);
       setProgressLabel('PDF 리포트 생성 중...');
+
+      // onFinish(DB 저장)는 스트림 종료 후 비동기 실행되므로
+      // status = 'completed' 가 될 때까지 폴링
+      {
+        const maxAttempts = 20;
+        const interval = 1000;
+        let completed = false;
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, interval));
+          const statusRes = await fetch(`/api/saju/update-status?readingId=${reading.id}`);
+          if (statusRes.ok) {
+            const { status } = await statusRes.json();
+            if (status === 'completed') { completed = true; break; }
+            if (status === 'failed') throw new Error('AI 분석 저장에 실패했습니다.');
+          }
+        }
+        if (!completed) throw new Error('분석 저장이 완료되지 않았습니다. 잠시 후 다시 시도해주세요.');
+      }
 
       // 4. PDF 다운로드
       const pdfRes = await fetch(`/api/saju/pdf/${reading.id}`);
@@ -342,49 +339,6 @@ export default function SajuReportClient({
           </p>
           {/* [별 시스템 비활성화] 별 사용량 표시 숨김 */}
         </div>
-
-        {/* 이전 리포트 재다운로드 */}
-        {completedReports.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold text-muted-foreground mb-2">이전 리포트</h2>
-            <div className="space-y-2">
-              {completedReports.map((report) => (
-                <div
-                  key={report.id}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-background"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{report.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {report.birth_year}.{String(report.birth_month).padStart(2, '0')}.{String(report.birth_day).padStart(2, '0')}
-                      {' · '}
-                      {report.created_at.slice(0, 10)}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleRedownload(report)}
-                    disabled={downloadingId === report.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
-                  >
-                    {downloadingId === report.id ? (
-                      '다운로드 중...'
-                    ) : (
-                      <>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                          <polyline points="7 10 12 15 17 10" />
-                          <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        재다운로드
-                      </>
-                    )}
-                  </button>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 border-t border-border" />
-          </div>
-        )}
 
         {/* 내 정보 사용하기 */}
         {previousBirthInfo && !usedMyInfo && (
