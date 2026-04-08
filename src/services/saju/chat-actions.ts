@@ -13,7 +13,7 @@ const characterSchema = z.enum(["charon_m", "charon_f", "doctor", "minjun", "hae
  */
 export async function updateReadingMeta(
   readingId: string,
-  meta: { birthCity?: string; characterId?: CharacterType }
+  meta: { birthCity?: string; characterId?: CharacterType; title?: string }
 ): Promise<{ error: string | null }> {
   const parsedId = readingIdSchema.safeParse(readingId);
   if (!parsedId.success) {
@@ -31,6 +31,9 @@ export async function updateReadingMeta(
     const parsed = characterSchema.safeParse(meta.characterId);
     if (!parsed.success) return { error: "Invalid character ID" };
     updateData.character_id = meta.characterId;
+  }
+  if (meta.title !== undefined) {
+    updateData.title = meta.title;
   }
 
   const supabase = await createClient();
