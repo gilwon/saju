@@ -143,11 +143,11 @@ function CharacterCard({ char, isLoggedIn = false }: { char: (typeof CHARACTER_L
 
         {/* 버튼 영역: mt-4 고정으로 라인이 버튼에 붙지 않게 */}
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-border">
-          {!isLoggedIn && (
+          {/* {!isLoggedIn && (
             <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
               <span className="text-yellow-500">&#9733;</span> 가입시 3별 무료 지급
             </span>
-          )}
+          )} */}
           <span className={`text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg shadow-md group-hover:bg-primary/90 transition-colors ${isLoggedIn ? 'ml-auto' : ''}`}>
             대화하기
           </span>
@@ -179,7 +179,7 @@ function CharacterCard({ char, isLoggedIn = false }: { char: (typeof CHARACTER_L
               </div>
               <h3 className="text-lg font-bold text-foreground mb-1">가입하고 바로 시작하세요</h3>
               <p className="text-sm text-muted-foreground mb-5">
-                가입하면 <span className="text-yellow-500 font-semibold">★ 3개</span>를 무료로 드려요!
+                {/* 가입하면 <span className="text-yellow-500 font-semibold">★ 3개</span>를 무료로 드려요! */}
                 <br />
                 바로 대화를 시작할 수 있어요
               </p>
