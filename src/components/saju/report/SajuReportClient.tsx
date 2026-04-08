@@ -73,6 +73,31 @@ export default function SajuReportClient({
   const [birthTime, setBirthTime] = useState('unknown');
   const [calendar, setCalendar] = useState<'solar' | 'lunar'>('solar');
   const [usedMyInfo, setUsedMyInfo] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const handleRedownload = async (report: CompletedReport) => {
+    setDownloadingId(report.id);
+    setDownloadError(null);
+    try {
+      const res = await fetch(`/api/saju/pdf/${report.id}`);
+      if (!res.ok) throw new Error('PDF 다운로드에 실패했습니다.');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `사주랩_${report.name}_종합분석리포트_${report.created_at.slice(0, 10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : 'PDF 다운로드 중 오류가 발생했습니다.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
   const fillMyInfo = () => {
     if (!previousBirthInfo) return;
     setName(previousBirthInfo.name);
@@ -339,6 +364,50 @@ export default function SajuReportClient({
           </p>
           {/* [별 시스템 비활성화] 별 사용량 표시 숨김 */}
         </div>
+
+        {/* 이전 리포트 재다운로드 */}
+        {completedReports.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold text-muted-foreground mb-2">이전 리포트</h2>
+            {downloadError && (
+              <p className="text-xs text-destructive mb-2 px-1">{downloadError}</p>
+            )}
+            <div className="space-y-2">
+              {completedReports.map((report) => (
+                <button
+                  key={report.id}
+                  onClick={() => handleRedownload(report)}
+                  disabled={downloadingId === report.id}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-border bg-background hover:bg-secondary transition-colors disabled:opacity-50 text-left"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{report.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {report.birth_year}.{String(report.birth_month).padStart(2, '0')}.{String(report.birth_day).padStart(2, '0')}
+                      {' · '}
+                      {report.created_at.slice(0, 10)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 ml-3 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium flex-shrink-0">
+                    {downloadingId === report.id ? (
+                      '다운로드 중...'
+                    ) : (
+                      <>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                          <polyline points="7 10 12 15 17 10" />
+                          <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        재다운로드
+                      </>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 border-t border-border" />
+          </div>
+        )}
 
         {/* 내 정보 사용하기 */}
         {previousBirthInfo && !usedMyInfo && (
