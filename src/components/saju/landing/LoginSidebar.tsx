@@ -85,11 +85,7 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, i
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCharacterPicker, setShowCharacterPicker] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const initEditLast = currentReading?.name ? (currentReading.name.length >= 2 ? currentReading.name.slice(0, 1) : '') : '';
-  const initEditFirst = currentReading?.name ? (currentReading.name.length >= 2 ? currentReading.name.slice(1) : currentReading.name) : '';
-  const [editLastName, setEditLastName] = useState(initEditLast);
-  const [editFirstName, setEditFirstName] = useState(initEditFirst);
-  const editName = `${editLastName}${editFirstName}`.trim();
+  const [editName, setEditName] = useState(currentReading?.name ?? '');
   const [editYear, setEditYear] = useState(currentReading?.birthYear?.toString() ?? '');
   const [editMonth, setEditMonth] = useState(currentReading?.birthMonth?.toString() ?? '');
   const [editDay, setEditDay] = useState(currentReading?.birthDay?.toString() ?? '');
@@ -337,22 +333,14 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, i
 
                   <div>
                     <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">이름</label>
-                    <div className="flex gap-1 min-w-0">
-                      <input
-                        type="text"
-                        placeholder="성"
-                        value={editLastName}
-                        onChange={(e) => setEditLastName(e.target.value)}
-                        className={`w-0 flex-[2] min-w-0 text-center ${inputClass}`}
-                      />
-                      <input
-                        type="text"
-                        placeholder="이름"
-                        value={editFirstName}
-                        onChange={(e) => setEditFirstName(e.target.value)}
-                        className={`w-0 flex-[3] min-w-0 ${inputClass}`}
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="홍길동"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      autoComplete="name"
+                      className={inputClass}
+                    />
                   </div>
 
                   <div>

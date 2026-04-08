@@ -61,12 +61,8 @@ export default function BirthInfoCard({ characterId, onComplete, editMode, readi
   const [step, setStep] = useState<1 | 2>(1);
   const [createdReadingId, setCreatedReadingId] = useState<string | null>(null);
 
-  // 내 정보 (성/이름 분리, DB에는 합쳐서 저장)
-  const initLastName = initialData?.name ? (initialData.name.length >= 2 ? initialData.name.slice(0, 1) : '') : '';
-  const initFirstName = initialData?.name ? (initialData.name.length >= 2 ? initialData.name.slice(1) : initialData.name) : '';
-  const [lastName, setLastName] = useState(initLastName);
-  const [firstName, setFirstName] = useState(initFirstName);
-  const name = `${lastName}${firstName}`.trim();
+  // 내 정보
+  const [name, setName] = useState(initialData?.name ?? '');
   const [year, setYear] = useState(initialData?.birthYear?.toString() ?? '');
   const [month, setMonth] = useState(initialData?.birthMonth?.toString() ?? '');
   const [day, setDay] = useState(initialData?.birthDay?.toString() ?? '');
@@ -98,7 +94,7 @@ export default function BirthInfoCard({ characterId, onComplete, editMode, readi
   }, [partnerYear, partnerMonth]);
 
   const handleStep1Submit = async () => {
-    if (!firstName.trim()) { setError('이름을 입력해주세요'); return; }
+    if (!name.trim()) { setError('이름을 입력해주세요'); return; }
     if (!year || Number(year) < 1940 || Number(year) > 2025) { setError('올바른 년도를 입력해주세요'); return; }
     if (!month || Number(month) < 1 || Number(month) > 12) { setError('올바른 월을 입력해주세요'); return; }
     if (!day || Number(day) < 1 || Number(day) > maxDay) { setError('올바른 일을 입력해주세요'); return; }
@@ -323,12 +319,8 @@ export default function BirthInfoCard({ characterId, onComplete, editMode, readi
 
         <div>
           <label className="text-xs font-semibold text-muted-foreground mb-1 block">이름</label>
-          <div className="flex gap-1.5">
-            <input type="text" placeholder="성 (Last)" value={lastName} onChange={(e) => setLastName(e.target.value)}
-              className={`flex-[2] min-w-0 ${inputClass}`} />
-            <input type="text" placeholder="이름 (First)" value={firstName} onChange={(e) => setFirstName(e.target.value)}
-              className={`flex-[3] min-w-0 ${inputClass}`} />
-          </div>
+          <input type="text" placeholder="홍길동" value={name} onChange={(e) => setName(e.target.value)}
+            className={inputClass} autoComplete="name" />
         </div>
 
         <div>
