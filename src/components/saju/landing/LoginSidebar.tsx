@@ -254,7 +254,16 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, i
               <div className="space-y-1">
                 {localHistory.map((item) => (
                   <div key={item.id} className="group relative flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-secondary transition-colors">
-                    <a href={item.title === '종합 사주 리포트' ? '/ko/saju-report' : `/ko/chat/${item.character_id}?r=${item.id}`} className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <a
+                      href={`/ko/chat/${item.character_id}?r=${item.id}`}
+                      onClick={(e) => {
+                        if (item.title === '종합 사주 리포트') {
+                          e.preventDefault();
+                          window.location.href = '/ko/saju-report';
+                        }
+                      }}
+                      className="flex items-center gap-2.5 min-w-0 flex-1"
+                    >
                       <Image src={item.character_avatar} alt={item.character_name} width={28} height={28} className="rounded-full object-cover flex-shrink-0" />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">
