@@ -5,11 +5,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/routing";
 import { CHARACTER_LIST } from "@/lib/saju/characters";
 
-interface CharacterCardsProps {
-  isLoggedIn?: boolean;
-}
-
-export default function CharacterCards({ isLoggedIn = false }: CharacterCardsProps) {
+export default function CharacterCards() {
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -70,7 +66,7 @@ export default function CharacterCards({ isLoggedIn = false }: CharacterCardsPro
       >
         {CHARACTER_LIST.map((char) => (
           <div key={char.id} className="snap-center">
-            <CharacterCard char={char} isLoggedIn={isLoggedIn} />
+            <CharacterCard char={char} />
           </div>
         ))}
       </div>
@@ -89,9 +85,7 @@ export default function CharacterCards({ isLoggedIn = false }: CharacterCardsPro
   );
 }
 
-function CharacterCard({ char, isLoggedIn = false }: { char: (typeof CHARACTER_LIST)[number]; isLoggedIn?: boolean }) {
-  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-
+function CharacterCard({ char }: { char: (typeof CHARACTER_LIST)[number] }) {
   const cardContent = (
     <div className="group rounded-2xl overflow-hidden cursor-pointer bg-card border border-border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
       {/* 이미지 영역 — 고정 비율 */}
@@ -148,7 +142,7 @@ function CharacterCard({ char, isLoggedIn = false }: { char: (typeof CHARACTER_L
               <span className="text-yellow-500">&#9733;</span> 가입시 3별 무료 지급
             </span>
           )} */}
-          <span className={`text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg shadow-md group-hover:bg-primary/90 transition-colors ${isLoggedIn ? 'ml-auto' : ''}`}>
+          <span className="text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg shadow-md group-hover:bg-primary/90 transition-colors ml-auto">
             대화하기
           </span>
         </div>
@@ -156,51 +150,5 @@ function CharacterCard({ char, isLoggedIn = false }: { char: (typeof CHARACTER_L
     </div>
   );
 
-  if (isLoggedIn) {
-    return <Link href={`/chat/${char.id}`} className="block h-full">{cardContent}</Link>;
-  }
-
-  return (
-    <>
-      <div className="h-full" onClick={() => setShowLoginPrompt(true)}>{cardContent}</div>
-
-      {showLoginPrompt && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
-          onClick={() => setShowLoginPrompt(false)}
-        >
-          <div
-            className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-2xl text-primary">&#9733;</span>
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-1">가입하고 바로 시작하세요</h3>
-              <p className="text-sm text-muted-foreground mb-5">
-                {/* 가입하면 <span className="text-yellow-500 font-semibold">★ 3개</span>를 무료로 드려요! */}
-                <br />
-                바로 대화를 시작할 수 있어요
-              </p>
-
-              <a
-                href="/ko/login"
-                className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-xl transition-colors"
-              >
-                로그인하고 시작하기
-              </a>
-
-              <button
-                onClick={() => setShowLoginPrompt(false)}
-                className="mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                나중에 할게요
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  return <Link href={`/chat/${char.id}`} className="block h-full">{cardContent}</Link>;
 }

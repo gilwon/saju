@@ -202,10 +202,14 @@ export async function deleteReading(
     return { error: "Reading not found or access denied" };
   }
 
-  await supabase
+  const { error: messagesError } = await supabase
     .from("saju_chat_messages")
     .delete()
     .eq("reading_id", readingId);
+
+  if (messagesError) {
+    return { error: messagesError.message };
+  }
 
   const { error } = await supabase
     .from("saju_readings")

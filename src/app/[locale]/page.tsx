@@ -43,7 +43,7 @@ export default async function HomePage() {
     <SajuLayout currentReading={currentReading}>
       {/* 카드 + 이용방법 = 한 영역 */}
       <div className="bg-background">
-        <CharacterCards isLoggedIn={!!user} />
+        <CharacterCards />
       </div>
       {/* <SajuTestimonials /> */}
       {/* <SajuFAQ /> */}

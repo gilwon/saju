@@ -13,6 +13,7 @@ import BirthInfoCard, { type BirthInfoData } from './BirthInfoCard';
 import OhangChart from './OhangChart';
 import { createReading } from '@/services/saju/actions';
 import { updateReadingMeta } from '@/services/saju/chat-actions';
+import { setGuestReadingId } from '@/utils/guest-session';
 import { Link, useRouter } from '@/i18n/routing';
 
 /** 오행 분포 */
@@ -132,6 +133,7 @@ export default function ChatRoom({
   const handleBirthInfoComplete = (newReadingId: string) => {
     setShowBirthForm(false);
     setIsAnalyzing(true);
+    setGuestReadingId(characterId, newReadingId);
     setTimeout(() => {
       window.location.href = `${window.location.pathname}?r=${newReadingId}`;
     }, 1500);

@@ -85,14 +85,10 @@ export async function createReading(
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { data: null, error: "로그인이 필요합니다." };
-  }
-
   const { data, error } = await supabase
     .from("saju_readings")
     .insert({
-      user_id: user.id,
+      user_id: user?.id ?? null,
       name: form.name,
       gender: form.gender,
       birth_year: form.birthYear,
@@ -253,6 +249,36 @@ export async function updateReadingStatus(
     data: updated as SajuReading | null,
     error: error?.message ?? null,
   };
+}
+
+/**
+ * 게스트로 생성한 readings를 로그인한 계정으로 연결합니다.
+ */
+export async function migrateGuestReadings(
+  readingIds: string[]
+): Promise<{ error: string | null }> {
+  if (!readingIds.length) return { error: null };
+
+  const validIds = readingIds.filter(
+    (id) => z.string().uuid().safeParse(id).success
+  );
+  if (!validIds.length) return { error: null };
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "로그인이 필요합니다." };
+
+  const { error } = await supabase
+    .from("saju_readings")
+    .update({ user_id: user.id, updated_at: new Date().toISOString() })
+    .in("id", validIds)
+    .is("user_id", null);
+
+  return { error: error?.message ?? null };
 }
 
 /**

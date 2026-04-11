@@ -26,35 +26,74 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
     data: { user },
   } = await supabase.auth.getUser();
 
+  const starBalance = 99999;
+
+  // 비회원(게스트) 플로우
   if (!user) {
-    redirect(`/${locale}?login=required&character=${characterId}`);
+    // readingId 파라미터로 기존 게스트 reading 로드 시도
+    if (readingIdParam && isNewChat !== 'true') {
+      const { data: guestReading } = await supabase
+        .from("saju_readings")
+        .select("*")
+        .eq("id", readingIdParam)
+        .is("user_id", null)
+        .single();
+
+      if (guestReading) {
+        const typedReading = guestReading as SajuReading;
+        const { data: chatMessages } = await getChatMessages(guestReading.id);
+
+        const initialMessages: UIMessage[] = chatMessages.map((msg) => ({
+          id: msg.id,
+          role: msg.role as "user" | "assistant",
+          parts: [{ type: "text" as const, text: msg.content }],
+        }));
+
+        const readingInfo = {
+          id: guestReading.id,
+          characterId: characterId as CharacterType,
+          name: typedReading.name,
+          gender: typedReading.gender as "male" | "female",
+          birthYear: typedReading.birth_year,
+          birthMonth: typedReading.birth_month,
+          birthDay: typedReading.birth_day,
+          birthHour: typedReading.birth_hour,
+          isLunar: typedReading.is_lunar,
+          birthCity: typedReading.birth_city ?? undefined,
+        };
+
+        return (
+          <SajuLayout currentReading={readingInfo}>
+            <ChatRoom
+              readingId={guestReading.id}
+              characterId={characterId as CharacterType}
+              initialMessages={initialMessages}
+              starBalance={starBalance}
+              fiveElements={typedReading.five_elements ?? undefined}
+            />
+          </SajuLayout>
+        );
+      }
+    }
+
+    // 게스트 신규 입력 폼
+    return (
+      <SajuLayout>
+        <ChatRoom
+          characterId={characterId as CharacterType}
+          needsBirthInfo
+          starBalance={starBalance}
+        />
+      </SajuLayout>
+    );
   }
 
+  // 회원 플로우
   const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").filter(Boolean);
   const isAdmin = user.email ? ADMIN_EMAILS.includes(user.email) : false;
 
-  // [별 시스템 비활성화] 잔액 조회 없이 무제한 사용
-  const starBalance = 99999;
-  // --- 별 잔액 조회 (추후 재활성화 시 아래 주석 해제) ---
-  // let starBalance = 0;
-  // if (isAdmin) {
-  //   starBalance = 99999;
-  // } else {
-  //   let { data: stars } = await supabase
-  //     .from("user_stars")
-  //     .select("balance")
-  //     .eq("user_id", user.id)
-  //     .single();
-  //   if (!stars) {
-  //     await supabase.from("user_stars").insert({ user_id: user.id, balance: 3 });
-  //     stars = { balance: 3 };
-  //   }
-  //   starBalance = stars.balance;
-  // }
-
   // 새 대화 모드면 기존 reading 건너뛰고 바로 입력 폼
   if (isNewChat === 'true') {
-    // 기존 사주정보 참고용으로 가져오기
     const { data: anyReading } = await supabase
       .from("saju_readings")
       .select("name, gender, birth_year, birth_month, birth_day, birth_hour, is_lunar, birth_city")
@@ -120,7 +159,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
       id: existingReading.id,
       characterId: characterId as CharacterType,
       name: typedReading.name,
-      gender: typedReading.gender as 'male' | 'female',
+      gender: typedReading.gender as "male" | "female",
       birthYear: typedReading.birth_year,
       birthMonth: typedReading.birth_month,
       birthDay: typedReading.birth_day,
@@ -129,9 +168,6 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
       birthCity: typedReading.birth_city ?? undefined,
     };
 
-    // 오행 분포 데이터
-    const fiveElements = typedReading.five_elements ?? undefined;
-
     return (
       <SajuLayout currentReading={readingInfo}>
         <ChatRoom
@@ -139,7 +175,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
           characterId={characterId as CharacterType}
           initialMessages={initialMessages}
           starBalance={starBalance}
-          fiveElements={fiveElements}
+          fiveElements={typedReading.five_elements ?? undefined}
           isAdmin={isAdmin}
         />
       </SajuLayout>

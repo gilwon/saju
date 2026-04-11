@@ -10,6 +10,8 @@ import "../globals.css";
 import { ClientWidgets } from "@/components/shared/ClientWidgets";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { ThemeSync } from "@/components/shared/ThemeSync";
+import GuestMigrator from "@/components/auth/GuestMigrator";
+import { createClient } from "@/utils/supabase/server";
 
 const notoSansKR = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -116,6 +118,9 @@ export default async function LocaleLayout({
 
   const messages = await getMessages({ locale });
 
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
@@ -218,6 +223,7 @@ export default async function LocaleLayout({
             {children}
             <Toaster />
             <ClientWidgets />
+            <GuestMigrator isLoggedIn={!!user} />
           </NextIntlClientProvider>
         </ThemeProvider>
       </body>
