@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import { getServerUser } from "@/utils/supabase/get-user";
 import { getChatMessages } from "@/services/saju/chat-actions";
 import { CHARACTERS, type CharacterType } from "@/lib/saju/characters";
 import SajuLayout from "@/components/saju/layout/SajuLayout";
@@ -12,6 +13,31 @@ interface ChatPageProps {
   searchParams: Promise<{ r?: string; new?: string }>;
 }
 
+function buildReadingInfo(reading: SajuReading, characterId: CharacterType) {
+  return {
+    id: reading.id,
+    characterId,
+    name: reading.name,
+    gender: reading.gender as "male" | "female",
+    birthYear: reading.birth_year,
+    birthMonth: reading.birth_month,
+    birthDay: reading.birth_day,
+    birthHour: reading.birth_hour,
+    isLunar: reading.is_lunar,
+    birthCity: reading.birth_city ?? undefined,
+  };
+}
+
+function buildInitialMessages(
+  chatMessages: { id: string; role: string; content: string }[]
+): UIMessage[] {
+  return chatMessages.map((msg) => ({
+    id: msg.id,
+    role: msg.role as "user" | "assistant",
+    parts: [{ type: "text" as const, text: msg.content }],
+  }));
+}
+
 export default async function ChatPage({ params, searchParams }: ChatPageProps) {
   const { characterId, locale } = await params;
   const { r: readingIdParam, new: isNewChat } = await searchParams;
@@ -20,18 +46,16 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
     redirect(`/${locale}`);
   }
 
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [user, supabase] = await Promise.all([
+    getServerUser(),
+    createClient(),
+  ]);
 
   const starBalance = 99999;
 
   // 비회원(게스트) 플로우
   if (!user) {
-    // readingId 파라미터로 기존 게스트 reading 로드 시도
-    if (readingIdParam && isNewChat !== 'true') {
+    if (readingIdParam && isNewChat !== "true") {
       const { data: guestReading } = await supabase
         .from("saju_readings")
         .select("*")
@@ -42,32 +66,14 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
       if (guestReading) {
         const typedReading = guestReading as SajuReading;
         const { data: chatMessages } = await getChatMessages(guestReading.id);
-
-        const initialMessages: UIMessage[] = chatMessages.map((msg) => ({
-          id: msg.id,
-          role: msg.role as "user" | "assistant",
-          parts: [{ type: "text" as const, text: msg.content }],
-        }));
-
-        const readingInfo = {
-          id: guestReading.id,
-          characterId: characterId as CharacterType,
-          name: typedReading.name,
-          gender: typedReading.gender as "male" | "female",
-          birthYear: typedReading.birth_year,
-          birthMonth: typedReading.birth_month,
-          birthDay: typedReading.birth_day,
-          birthHour: typedReading.birth_hour,
-          isLunar: typedReading.is_lunar,
-          birthCity: typedReading.birth_city ?? undefined,
-        };
+        const readingInfo = buildReadingInfo(typedReading, characterId as CharacterType);
 
         return (
           <SajuLayout currentReading={readingInfo}>
             <ChatRoom
               readingId={guestReading.id}
               characterId={characterId as CharacterType}
-              initialMessages={initialMessages}
+              initialMessages={buildInitialMessages(chatMessages)}
               starBalance={starBalance}
               fiveElements={typedReading.five_elements ?? undefined}
             />
@@ -76,7 +82,6 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
       }
     }
 
-    // 게스트 신규 입력 폼
     return (
       <SajuLayout>
         <ChatRoom
@@ -92,8 +97,7 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
   const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").filter(Boolean);
   const isAdmin = user.email ? ADMIN_EMAILS.includes(user.email) : false;
 
-  // 새 대화 모드면 기존 reading 건너뛰고 바로 입력 폼
-  if (isNewChat === 'true') {
+  if (isNewChat === "true") {
     const { data: anyReading } = await supabase
       .from("saju_readings")
       .select("name, gender, birth_year, birth_month, birth_day, birth_hour, is_lunar, birth_city")
@@ -128,7 +132,6 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
     );
   }
 
-  // readingId 파라미터가 있으면 해당 reading, 없으면 최신 reading
   let readingQuery = supabase
     .from("saju_readings")
     .select("*")
@@ -148,32 +151,14 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
   if (existingReading) {
     const typedReading = existingReading as SajuReading;
     const { data: chatMessages } = await getChatMessages(existingReading.id);
-
-    const initialMessages: UIMessage[] = chatMessages.map((msg) => ({
-      id: msg.id,
-      role: msg.role as "user" | "assistant",
-      parts: [{ type: "text" as const, text: msg.content }],
-    }));
-
-    const readingInfo = {
-      id: existingReading.id,
-      characterId: characterId as CharacterType,
-      name: typedReading.name,
-      gender: typedReading.gender as "male" | "female",
-      birthYear: typedReading.birth_year,
-      birthMonth: typedReading.birth_month,
-      birthDay: typedReading.birth_day,
-      birthHour: typedReading.birth_hour,
-      isLunar: typedReading.is_lunar,
-      birthCity: typedReading.birth_city ?? undefined,
-    };
+    const readingInfo = buildReadingInfo(typedReading, characterId as CharacterType);
 
     return (
       <SajuLayout currentReading={readingInfo}>
         <ChatRoom
           readingId={existingReading.id}
           characterId={characterId as CharacterType}
-          initialMessages={initialMessages}
+          initialMessages={buildInitialMessages(chatMessages)}
           starBalance={starBalance}
           fiveElements={typedReading.five_elements ?? undefined}
           isAdmin={isAdmin}
@@ -182,7 +167,6 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
     );
   }
 
-  // 이 캐릭터용 reading은 없지만, 다른 캐릭터로 입력한 사주정보가 있을 수 있음
   const { data: anyReading } = await supabase
     .from("saju_readings")
     .select("name, gender, birth_year, birth_month, birth_day, birth_hour, is_lunar, birth_city")

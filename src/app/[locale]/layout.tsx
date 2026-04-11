@@ -11,7 +11,7 @@ import { ClientWidgets } from "@/components/shared/ClientWidgets";
 import { ThemeProvider } from "@/components/shared/ThemeProvider";
 import { ThemeSync } from "@/components/shared/ThemeSync";
 import GuestMigrator from "@/components/auth/GuestMigrator";
-import { createClient } from "@/utils/supabase/server";
+import { getServerUser } from "@/utils/supabase/get-user";
 
 const notoSansKR = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -118,8 +118,7 @@ export default async function LocaleLayout({
 
   const messages = await getMessages({ locale });
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getServerUser();
 
   return (
     <html lang={locale} suppressHydrationWarning>

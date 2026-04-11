@@ -4,12 +4,12 @@ import SajuTestimonials from "@/components/saju/landing/SajuTestimonials";
 import SajuFAQ from "@/components/saju/landing/SajuFAQ";
 import SajuFooter from "@/components/saju/landing/SajuFooter";
 import { createClient } from "@/utils/supabase/server";
+import { getServerUser } from "@/utils/supabase/get-user";
 import type { CharacterType } from "@/lib/saju/characters";
 import type { SajuReading } from "@/types/saju";
 
 export default async function HomePage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const [user, supabase] = await Promise.all([getServerUser(), createClient()]);
 
   // 로그인 유저면 최근 reading에서 사주 정보 가져오기
   let currentReading;
