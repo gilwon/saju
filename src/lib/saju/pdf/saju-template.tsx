@@ -170,7 +170,7 @@ function PageTopBar() {
 function PageFooter() {
   return (
     <View style={styles.footer} fixed>
-      <Text style={styles.footerBrand}>DR.SAJU</Text>
+      <Text style={styles.footerBrand}>사주랩</Text>
       <Text
         style={styles.footerPage}
         render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
@@ -424,9 +424,9 @@ export function SajuPdf({ reading }: SajuPdfProps) {
   return (
     <Document
       title={`종합 사주분석 - ${reading.name}`}
-      author="drsaju.com"
+      author="사주랩"
       subject="사주분석 리포트"
-      creator="drsaju.com"
+      creator="사주랩"
     >
       <CoverPage reading={reading} />
 
