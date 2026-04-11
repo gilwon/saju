@@ -147,6 +147,30 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, i
             로그인 / 회원가입
           </a>
 
+          {/* 비회원도 이용 가능한 종합 사주 리포트 */}
+          <Link
+            href="/saju-report"
+            className="w-full mt-3 flex items-center gap-2.5 px-3 py-3 rounded-xl bg-gradient-to-r from-primary/10 to-indigo-500/10 border border-primary/20 hover:border-primary/40 transition-all group"
+          >
+            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-primary group-hover:text-primary/80 transition-colors">
+                나만의 사주 리포트
+              </p>
+              <p className="text-[10px] text-muted-foreground">AI 종합 분석 PDF</p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ml-auto flex-shrink-0 text-muted-foreground">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </Link>
+
           <div className="w-full border-t border-sidebar-border mt-8 pt-5">
             <p className="text-xs text-muted-foreground text-center leading-relaxed">
               로그인하면 모든 대화 기록을

@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import SajuLayout from "@/components/saju/layout/SajuLayout";
 import SajuReportClient from "@/components/saju/report/SajuReportClient";
@@ -9,12 +8,16 @@ export default async function SajuReportPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/ko?login=required");
-  }
-
   // [별 시스템 비활성화] 무제한 무료 사용
   const starBalance = 99999;
+
+  if (!user) {
+    return (
+      <SajuLayout>
+        <SajuReportClient starBalance={starBalance} />
+      </SajuLayout>
+    );
+  }
 
   // 최근 사주 정보 (사이드바 + 내 정보 사용하기 용)
   const { data: latestReading } = await supabase
@@ -66,7 +69,6 @@ export default async function SajuReportPage() {
   return (
     <SajuLayout currentReading={currentReading}>
       <SajuReportClient
-        userId={user.id}
         starBalance={starBalance}
         previousBirthInfo={previousBirthInfo}
         completedReports={completedReports ?? []}

@@ -29,18 +29,20 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await createClient();
-
-  // 인증 확인
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
-  const { error } = await supabase
+  let query = supabase
     .from('saju_readings')
     .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', readingId)
-    .eq('user_id', user.id);
+    .eq('id', readingId);
+
+  if (user) {
+    query = query.eq('user_id', user.id);
+  } else {
+    query = query.is('user_id', null);
+  }
+
+  const { error } = await query;
 
   if (error) {
     return NextResponse.json({ error: 'Failed to update status' }, { status: 500 });

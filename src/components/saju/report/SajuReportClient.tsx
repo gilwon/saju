@@ -47,7 +47,6 @@ interface CompletedReport {
 }
 
 interface SajuReportClientProps {
-  userId: string;
   starBalance: number; // [별 시스템 비활성화] 사용하지 않음
   previousBirthInfo?: PreviousBirthInfo;
   completedReports?: CompletedReport[];
@@ -56,7 +55,6 @@ interface SajuReportClientProps {
 type Step = 'input' | 'generating' | 'done' | 'error';
 
 export default function SajuReportClient({
-  userId,
   previousBirthInfo,
   completedReports = [],
 }: SajuReportClientProps) {
