@@ -2,7 +2,6 @@
 
 import { z } from "zod";
 import { createClient } from "@/utils/supabase/server";
-import { createAdminClient } from "@/utils/supabase/admin";
 import type { ChatMessage, CharacterType } from "@/types/saju";
 
 const readingIdSchema = z.string().uuid();
@@ -203,19 +202,16 @@ export async function deleteReading(
     return { error: "Reading not found or access denied" };
   }
 
-  // admin 클라이언트로 삭제 (RLS DELETE 정책 미설정 시에도 확실히 삭제)
-  const admin = createAdminClient();
-
-  await admin
+  await supabase
     .from("saju_chat_messages")
     .delete()
     .eq("reading_id", readingId);
 
-  const { error } = await admin
+  const { error } = await supabase
     .from("saju_readings")
     .delete()
     .eq("id", readingId)
-    .eq("user_id", user.id);  // user_id 조건 유지로 안전성 보장
+    .eq("user_id", user.id);
 
   return { error: error?.message ?? null };
 }
