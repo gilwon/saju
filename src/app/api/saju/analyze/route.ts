@@ -41,6 +41,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 소유권 확인 (status 변경 전에 수행)
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) {
+      // 로그인 유저: 자신의 reading인지 확인
+      if (reading.user_id !== authUser.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    } else {
+      // 게스트: user_id가 null이어야 함
+      if (reading.user_id !== null) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      // guest_session_id 쿠키 검증 (null인 기존 레거시 reading은 관대하게 허용)
+      const guestSessionId = req.cookies.get('guest_session_id')?.value;
+      const readingGuestSessionId = (reading as Record<string, unknown>).guest_session_id as string | null;
+      if (readingGuestSessionId !== null && readingGuestSessionId !== guestSessionId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
+
     // 결제 확인
     if (reading.status !== 'paid') {
       return NextResponse.json(

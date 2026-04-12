@@ -39,49 +39,28 @@ export async function POST(request: Request) {
 
   const credits = CREDIT_MAP[productType];
 
-  // 4. user_stars 잔액 업데이트 (upsert)
-  // 먼저 현재 잔액 조회
-  const { data: existing } = await supabase
-    .from('user_stars')
-    .select('balance')
-    .eq('user_id', userId)
-    .single();
+  // 4. RPC 호출 (멱등, atomic)
+  const { data: rpcResult, error: rpcError } = await supabase
+    .rpc('add_stars_idempotent', {
+      p_user_id: userId,
+      p_amount: credits,
+      p_paddle_transaction_id: event.data.id,
+      p_product_type: productType,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any;
 
-  const currentBalance = existing?.balance ?? 0;
-  const newBalance = currentBalance + credits;
-
-  if (existing) {
-    const { error } = await supabase
-      .from('user_stars')
-      .update({ balance: newBalance })
-      .eq('user_id', userId);
-
-    if (error) {
-      console.error('[Paddle Webhook] 잔액 업데이트 실패:', error);
-      return new Response('DB update failed', { status: 500 });
-    }
-  } else {
-    // 신규 유저 (가입 보너스 3 + 충전분)
-    const { error } = await supabase
-      .from('user_stars')
-      .insert({ user_id: userId, balance: 3 + credits });
-
-    if (error) {
-      console.error('[Paddle Webhook] 유저 생성 실패:', error);
-      return new Response('DB insert failed', { status: 500 });
-    }
+  if (rpcError) {
+    console.error('[Paddle Webhook] RPC 실패:', rpcError);
+    return new Response('DB update failed', { status: 500 });
   }
 
-  // 5. 거래 이력 기록
-  await supabase.from('star_transactions').insert({
-    user_id: userId,
-    amount: credits,
-    balance_after: existing ? newBalance : 3 + credits,
-    type: 'purchase',
-    paddle_transaction_id: event.data.id,
-    product_type: productType,
-  });
+  const { new_balance, is_duplicate } = rpcResult[0];
 
-  console.log(`[Paddle Webhook] 별 ${credits}개 충전 완료: userId=${userId}`);
+  if (is_duplicate) {
+    console.log(`[Paddle Webhook] 중복 처리 감지, 무시: ${event.data.id}`);
+    return new Response('ok', { status: 200 });
+  }
+
+  console.log(`[Paddle Webhook] 별 ${credits}개 충전 완료: userId=${userId}, balance=${new_balance}`);
   return new Response('ok', { status: 200 });
 }

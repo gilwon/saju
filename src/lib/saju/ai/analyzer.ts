@@ -15,8 +15,6 @@ import {
 } from '../prompts';
 import { getModel } from '@/lib/ai/model';
 
-const model = getModel();
-
 /**
  * 무료 미리보기 텍스트를 생성합니다 (150자 이내).
  */
@@ -28,7 +26,7 @@ export async function generatePreview(params: {
   const { system, user } = buildPreviewPrompt(params);
 
   const { text } = await generateText({
-    model,
+    model: getModel(),
     system,
     prompt: user,
     maxOutputTokens: 300,
@@ -57,7 +55,7 @@ export async function generateFullAnalysis(params: {
   const { system, user } = buildSajuAnalysisPrompt(params);
 
   const { text } = await generateText({
-    model,
+    model: getModel(),
     system,
     prompt: user,
     maxOutputTokens: 12000,
@@ -87,7 +85,7 @@ export async function generateCompatibility(params: {
   const { system, user } = buildCompatibilityPrompt(params);
 
   const { text } = await generateText({
-    model,
+    model: getModel(),
     system,
     prompt: user,
     maxOutputTokens: 2048,

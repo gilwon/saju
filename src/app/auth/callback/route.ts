@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     ?.split("; ")
     .find((c) => c.startsWith("NEXT_LOCALE="))
     ?.split("=")[1];
-  const locale = (localeCookie || routing.defaultLocale) as "en" | "ko";
+  const locale = (localeCookie || routing.defaultLocale) as (typeof routing.locales)[number];
 
   // if "next" is in param, use it as the redirect URL
   const next = searchParams.get("next") ?? "/dashboard";

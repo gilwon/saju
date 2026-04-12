@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { analyzeSaju } from "@/lib/saju/calculator";
 import type {
@@ -85,10 +86,24 @@ export async function createReading(
     data: { user },
   } = await supabase.auth.getUser();
 
+  let guestSessionId: string | null = null;
+  if (!user) {
+    guestSessionId = crypto.randomUUID();
+    const cookieStore = await cookies();
+    cookieStore.set('guest_session_id', guestSessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+      path: '/',
+    });
+  }
+
   const { data, error } = await supabase
     .from("saju_readings")
     .insert({
       user_id: user?.id ?? null,
+      guest_session_id: guestSessionId,
       name: form.name,
       gender: form.gender,
       birth_year: form.birthYear,
@@ -210,6 +225,9 @@ export async function getReading(
   };
 }
 
+// 클라이언트(Server Action)에서 설정 가능한 status 목록 (paid/completed는 결제 웹훅에서만 설정)
+const ALLOWED_CLIENT_STATUSES: ReadingStatus[] = ["pending", "preview"];
+
 /**
  * 사주 분석 레코드의 상태를 업데이트합니다.
  * 추가 데이터(preview_summary, full_analysis, paddle_transaction_id, pdf_url 등)도 함께 업데이트 가능합니다.
@@ -232,18 +250,33 @@ export async function updateReadingStatus(
     return { data: null, error: "Invalid reading ID" };
   }
 
+  // 허용된 status만 설정 가능 (paid/completed 등 결제 관련 status 우회 방지)
+  if (!ALLOWED_CLIENT_STATUSES.includes(status)) {
+    return { data: null, error: "Invalid status" };
+  }
+
   const supabase = await createClient();
 
-  const { data: updated, error } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // 게스트 reading은 소유권 확인 없이 처리 (user_id가 null)
+  // 로그인 유저는 자신의 reading만 수정 가능
+  let query = supabase
     .from("saju_readings")
     .update({
       status,
       ...data,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id)
-    .select("*")
-    .single();
+    .eq("id", id);
+
+  if (user) {
+    query = query.eq("user_id", user.id);
+  }
+
+  const { data: updated, error } = await query.select("*").single();
 
   return {
     data: updated as SajuReading | null,
@@ -272,11 +305,26 @@ export async function migrateGuestReadings(
 
   if (!user) return { error: "로그인이 필요합니다." };
 
-  const { error } = await supabase
+  const cookieStore = await cookies();
+  const guestSessionId = cookieStore.get('guest_session_id')?.value;
+
+  // user_id가 null인 게스트 reading만 연결 (타인 소유 reading 탈취 방지)
+  // guest_session_id가 있으면 해당 세션의 reading만 migrate
+  let query = supabase
     .from("saju_readings")
     .update({ user_id: user.id, updated_at: new Date().toISOString() })
     .in("id", validIds)
     .is("user_id", null);
+
+  if (guestSessionId) {
+    query = query.eq("guest_session_id", guestSessionId);
+  }
+
+  const { error } = await query;
+
+  if (guestSessionId) {
+    cookieStore.delete('guest_session_id');
+  }
 
   return { error: error?.message ?? null };
 }
@@ -296,6 +344,7 @@ export async function linkReadingToUser(
 
   const supabase = await createClient();
 
+  // user_id가 null인 게스트 reading만 연결 가능 (이미 다른 유저 소유인 reading 탈취 방지)
   const { data, error } = await supabase
     .from("saju_readings")
     .update({
@@ -303,6 +352,7 @@ export async function linkReadingToUser(
       updated_at: new Date().toISOString(),
     })
     .eq("id", readingId)
+    .is("user_id", null)
     .select("*")
     .single();
 

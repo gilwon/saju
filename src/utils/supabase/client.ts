@@ -5,6 +5,9 @@ export function createClient() {
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Supabase environment variables are required in production');
+    }
     console.warn("Supabase credentials missing. Returning mock client.");
     return {
       auth: {
@@ -37,6 +40,7 @@ export function createClient() {
         }),
         delete: () => ({ eq: () => ({ data: null, error: null }) }),
       }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
   }
 

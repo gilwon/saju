@@ -2,44 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
 export async function POST(req: NextRequest) {
-  const { userId, amount, readingId } = await req.json();
+  const { amount, readingId } = await req.json();
 
-  if (!userId || !amount) {
+  if (!amount) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
   const supabase = await createClient();
 
-  // 인증 확인
+  // 인증 확인 — body의 userId를 신뢰하지 않고 서버 세션에서 직접 획득
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.id !== userId) {
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // 잔액 조회
-  const { data: stars } = await supabase
-    .from('user_stars')
-    .select('balance')
-    .eq('user_id', userId)
-    .single();
+  const userId = user.id;
 
-  if (!stars || stars.balance < amount) {
-    return NextResponse.json({ error: 'Insufficient stars' }, { status: 400 });
+  // RPC 호출 (atomic)
+  const { data: rpcResult, error: rpcError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .rpc('deduct_star', { p_user_id: userId, p_amount: amount }) as any;
+
+  if (rpcError || !rpcResult?.[0]?.success) {
+    return NextResponse.json({ error: 'Insufficient stars or deduction failed' }, { status: 400 });
   }
 
-  const newBalance = stars.balance - amount;
+  const newBalance = rpcResult[0].new_balance;
 
-  // 잔액 차감
-  const { error: updateError } = await supabase
-    .from('user_stars')
-    .update({ balance: newBalance })
-    .eq('user_id', userId);
-
-  if (updateError) {
-    return NextResponse.json({ error: 'Failed to deduct stars' }, { status: 500 });
-  }
-
-  // 거래 이력 기록
+  // 거래 이력 기록 (RPC에서 처리 안 하므로 여기서 직접)
   await supabase.from('star_transactions').insert({
     user_id: userId,
     amount: -amount,

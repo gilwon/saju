@@ -75,7 +75,7 @@ export interface SajuReadingItem {
   birth_day: number;
   gender: string;
   title: string | null;
-  chat_used: boolean;
+  chat_used: number;
   created_at: string;
 }
 

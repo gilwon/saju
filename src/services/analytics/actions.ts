@@ -630,7 +630,7 @@ export async function getFunnelData(from: string, to: string) {
     .from("saju_readings")
     .select("user_id")
     .in("user_id", periodUserIds)
-    .eq("chat_used", true);
+    .gt("chat_used", 0);
   const withChat = new Set((chatUsedReadings || []).map((r) => r.user_id)).size;
 
   // Step 4: 별 구매한 사용자 (결제)

@@ -25,9 +25,27 @@ export async function GET(
 
   if (!isAdmin) {
     query = query.eq("status", "completed");
+    // 소유권 확인: 로그인 유저는 자신의 reading만, 게스트는 user_id가 null인 reading만
+    if (user) {
+      query = query.eq("user_id", user.id);
+    } else {
+      query = query.is("user_id", null);
+    }
   }
 
   const { data: reading, error } = await query.single();
+
+  // 게스트 소유권 검증: guest_session_id 쿠키 확인
+  if (!isAdmin && !user && reading) {
+    const guestSessionId = req.cookies.get('guest_session_id')?.value;
+    const readingGuestSessionId = (reading as Record<string, unknown>).guest_session_id as string | null;
+    if (readingGuestSessionId !== null && readingGuestSessionId !== guestSessionId) {
+      return NextResponse.json(
+        { error: "Reading not found or not completed" },
+        { status: 404 }
+      );
+    }
+  }
 
   if (error || !reading) {
     return NextResponse.json(

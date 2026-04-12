@@ -1,5 +1,6 @@
 "use server";
 
+import { randomInt } from "node:crypto";
 import { z } from "zod";
 import { createClient } from "@/utils/supabase/server";
 
@@ -12,7 +13,7 @@ function generateReferralCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 혼동하기 쉬운 O/0/1/I 제외
   let code = "";
   for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+    code += chars[randomInt(chars.length)];
   }
   return code;
 }

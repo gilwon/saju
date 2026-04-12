@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
     // 궁합 레코드 조회
     const { data: compat, error: compatError } = await supabase
-      .from('saju_compatibilities')
+      .from('saju_compatibility')
       .select('*')
       .eq('id', compatibilityId)
       .single();
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
 
     // status를 generating으로 변경
     await supabase
-      .from('saju_compatibilities')
+      .from('saju_compatibility')
       .update({ status: 'generating', updated_at: new Date().toISOString() })
       .eq('id', compatibilityId);
 
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     // DB 업데이트
     const { error: updateError } = await supabase
-      .from('saju_compatibilities')
+      .from('saju_compatibility')
       .update({
         partner_four_pillars: partnerSaju.pillars.toObject(),
         partner_five_elements: partnerSaju.elements,
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 
     if (updateError) {
       await supabase
-        .from('saju_compatibilities')
+        .from('saju_compatibility')
         .update({ status: 'failed', updated_at: new Date().toISOString() })
         .eq('id', compatibilityId);
 
@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
       if (body.compatibilityId) {
         const supabase = await createClient();
         await supabase
-          .from('saju_compatibilities')
+          .from('saju_compatibility')
           .update({ status: 'failed', updated_at: new Date().toISOString() })
           .eq('id', body.compatibilityId);
       }

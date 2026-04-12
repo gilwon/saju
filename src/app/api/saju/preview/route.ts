@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       month: reading.birth_month,
       day: reading.birth_day,
       hour: reading.birth_hour ?? undefined,
-      minute: reading.birth_minute,
+      minute: reading.birth_minute ?? 0,
       isLunar: reading.is_lunar,
       isLeapMonth: reading.is_leap_month,
     });

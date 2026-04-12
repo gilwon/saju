@@ -201,9 +201,11 @@ const HOUR_TO_SIJI_LABEL: Record<number, string> = {
 };
 
 function CoverPage({ reading }: { reading: SajuReading }) {
-  const sijiLabel = reading.birth_hour !== null ? HOUR_TO_SIJI_LABEL[reading.birth_hour] ?? "" : "";
+  const sijiLabel = reading.birth_hour != null ? HOUR_TO_SIJI_LABEL[reading.birth_hour] ?? "" : "";
   const birthStr = `${reading.birth_year}년 ${reading.birth_month}월 ${reading.birth_day}일${sijiLabel ? ` ${sijiLabel}` : ""}`;
-  const date = new Date(reading.created_at).toISOString().slice(0, 10);
+  const date = reading.created_at
+    ? new Date(reading.created_at).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
 
   return (
     <Page size="A4" style={styles.coverPage}>
@@ -300,7 +302,7 @@ function FiveElementsSection({ elements }: { elements: FiveElementDistribution }
     <View style={styles.elementContainer}>
       <SectionTitle title="오행 분석" subtitle="FIVE ELEMENTS" />
       {items.map((item) => {
-        const widthPercent = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+        const widthPercent = (item.count / maxCount) * 100;
         const colors = ELEMENT_COLORS[item.key];
         return (
           <View key={item.key} style={styles.elementRow}>
@@ -330,7 +332,7 @@ function FiveElementsSection({ elements }: { elements: FiveElementDistribution }
 
 function TextSection({ title, subtitle, content }: { title: string; subtitle?: string; content: string }) {
   if (!content) return null;
-  const paragraphs = content.split("\n").filter((l) => l.trim());
+  const paragraphs = content.split("\n").filter((l) => l.trim() !== "");
 
   return (
     <View>
@@ -420,6 +422,9 @@ interface SajuPdfProps {
 
 export function SajuPdf({ reading }: SajuPdfProps) {
   const analysis = reading.full_analysis;
+  const fortuneYear = reading.created_at
+    ? new Date(reading.created_at).getFullYear()
+    : new Date().getFullYear();
 
   return (
     <Document
@@ -504,7 +509,7 @@ export function SajuPdf({ reading }: SajuPdfProps) {
       {analysis?.yearlyFortune && (
         <Page size="A4" style={styles.page}>
           <PageTopBar />
-          <TextSection title="2026년 총운" subtitle="YEARLY FORTUNE" content={analysis.yearlyFortune} />
+          <TextSection title={`${fortuneYear}년 총운`} subtitle="YEARLY FORTUNE" content={analysis.yearlyFortune} />
           <PageFooter />
         </Page>
       )}
@@ -520,7 +525,7 @@ export function SajuPdf({ reading }: SajuPdfProps) {
       {analysis?.monthlyFortune && analysis.monthlyFortune.length > 6 && (
         <Page size="A4" style={styles.page}>
           <PageTopBar />
-          <MonthlyFortuneSection months={analysis.monthlyFortune.slice(6)} />
+          <MonthlyFortuneSection months={analysis.monthlyFortune.slice(6)} label="하반기" />
           <PageFooter />
         </Page>
       )}

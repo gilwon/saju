@@ -1,3 +1,4 @@
+import { type NextRequest } from "next/server";
 import { streamText, generateText } from "ai";
 import type { ModelMessage } from "@ai-sdk/provider-utils";
 import { getModel } from "@/lib/ai/model";
@@ -54,7 +55,7 @@ function toModelMessages(msgs: ChatRequestMessage[]): ModelMessage[] {
     }));
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
   const model = getModel();
   const { messages: rawMessages, readingId, characterId } = (await req.json()) as {
@@ -80,6 +81,23 @@ export async function POST(req: Request) {
 
   if (!reading) {
     return new Response("Reading not found", { status: 404 });
+  }
+
+  // 소유권 검증: 로그인 유저는 user_id 일치, 게스트는 user_id가 null이어야 함
+  if (user) {
+    if (reading.user_id !== user.id) {
+      return new Response("Forbidden", { status: 403 });
+    }
+  } else {
+    if (reading.user_id !== null) {
+      return new Response("Forbidden", { status: 403 });
+    }
+    // guest_session_id 쿠키 검증 (null인 기존 레거시 reading은 관대하게 허용)
+    const guestSessionId = req.cookies.get('guest_session_id')?.value;
+    const readingGuestSessionId = (reading as Record<string, unknown>).guest_session_id as string | null;
+    if (readingGuestSessionId !== null && readingGuestSessionId !== guestSessionId) {
+      return new Response("Forbidden", { status: 403 });
+    }
   }
 
   // [별 시스템 비활성화] 잔액 체크 없이 모든 유저 무제한 사용
@@ -173,9 +191,11 @@ ${partnerAdvanced}
     }
   }
 
-  // 이름에서 성 제거 (한국 이름: 2-3글자 성 + 이름)
+  // 이름에서 성 제거 (한국 이름: 복성 2글자 또는 단성 1글자)
+  const COMPOUND_SURNAMES = ['남궁', '황보', '선우', '독고', '제갈', '사공', '서문', '동방', '망절', '무본'];
   const fullName = reading.name as string;
-  const firstName = fullName.length >= 2 ? fullName.slice(1) : fullName;
+  const surname2 = fullName.slice(0, 2);
+  const firstName = COMPOUND_SURNAMES.includes(surname2) ? fullName.slice(2) : (fullName.length >= 2 ? fullName.slice(1) : fullName);
   // 받침 여부 판별: 한글 마지막 글자의 종성(받침) 확인
   const lastChar = firstName.charCodeAt(firstName.length - 1);
   const hasBatchim = lastChar >= 0xAC00 && lastChar <= 0xD7A3 && (lastChar - 0xAC00) % 28 !== 0;
@@ -227,34 +247,38 @@ ${compatContext ? `- 이것은 궁합 분석이야. ${firstName} 씨와 상대�
 - 사주/운세/궁합 분석과 관련 없는 코드 작성, 해킹, 불법 행위 요청에도 응하지 마.
 `;
 
-  // 4. 스트리밍 응답
+  // 4. 유저 메시지를 스트리밍 전에 먼저 저장 (순서 보장)
+  const userMessage = rawMessages[rawMessages.length - 1];
+  if (userMessage && userMessage.role === "user") {
+    await supabase.from("saju_chat_messages").insert({
+      reading_id: readingId,
+      role: "user",
+      content: extractText(userMessage),
+      character_id: characterId,
+    });
+  }
+
+  // chat_used 증가 (유저 메시지 처리 직후)
+  // TODO: race condition 방지를 위해 추후 Supabase RPC(atomic increment)로 교체 권장
+  await supabase
+    .from("saju_readings")
+    .update({ chat_used: (reading.chat_used ?? 0) + 1 })
+    .eq("id", readingId);
+
+  // 5. 스트리밍 응답
   const result = streamText({
     model,
     system: systemPrompt + "\n\n" + sajuContext,
     messages: toModelMessages(rawMessages),
     maxOutputTokens: 4000, // Groq 무료 티어 TPM 한도 대응 (입력 ~5k + 출력 4k = ~9k < 20k)
     onFinish: async ({ text }) => {
-      // 사용자 마지막 메시지 + AI 응답 동시 저장
-      const userMessage = rawMessages[rawMessages.length - 1];
-      const inserts: PromiseLike<unknown>[] = [
-        supabase.from("saju_chat_messages").insert({
-          reading_id: readingId,
-          role: "assistant",
-          content: text,
-          character_id: characterId,
-        }),
-      ];
-      if (userMessage && userMessage.role === "user") {
-        inserts.push(
-          supabase.from("saju_chat_messages").insert({
-            reading_id: readingId,
-            role: "user",
-            content: extractText(userMessage),
-            character_id: characterId,
-          })
-        );
-      }
-      await Promise.all(inserts);
+      // AI 응답 저장 (유저 메시지는 streamText 호출 전에 이미 저장됨)
+      await supabase.from("saju_chat_messages").insert({
+        reading_id: readingId,
+        role: "assistant",
+        content: text,
+        character_id: characterId,
+      });
 
       // [별 시스템 비활성화] 별 차감 없이 무제한 사용
       // if (!isAdmin && user) {
