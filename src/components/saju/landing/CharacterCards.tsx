@@ -8,14 +8,15 @@ import { CHARACTER_LIST } from "@/lib/saju/characters";
 function getPerPage(w: number) {
   if (w < 640) return 1;
   if (w < 1024) return 2;
-  return 3;
+  if (w < 1280) return 3;
+  return 4;
 }
 
 const DRAG_THRESHOLD = 50; // px — 이 이상 드래그해야 페이지 전환
 
 export default function CharacterCards() {
   const [page, setPage] = useState(0);
-  const [perPage, setPerPage] = useState(3);
+  const [perPage, setPerPage] = useState(4);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const isHoveredRef = useRef(false);
@@ -105,20 +106,20 @@ export default function CharacterCards() {
         <button
           onClick={goPrev}
           aria-label="이전"
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-background/80 border border-border shadow hover:bg-muted transition-colors text-lg font-bold select-none"
+          className="absolute left-1 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-background border-2 border-border shadow-md hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 text-xl font-bold select-none"
         >
           ‹
         </button>
         <button
           onClick={goNext}
           aria-label="다음"
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-background/80 border border-border shadow hover:bg-muted transition-colors text-lg font-bold select-none"
+          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-background border-2 border-border shadow-md hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 text-xl font-bold select-none"
         >
           ›
         </button>
 
         {/* 캐러셀 트랙 */}
-        <div className="overflow-hidden px-10 md:px-12">
+        <div className="overflow-hidden px-12 md:px-14">
           <div
             ref={trackRef}
             className={`flex ${isDragging ? "" : "transition-transform duration-500 ease-in-out"} cursor-grab active:cursor-grabbing select-none`}
@@ -150,15 +151,17 @@ export default function CharacterCards() {
         </div>
       </div>
 
-      {/* 페이지 점 인디케이터 */}
-      <div className="flex justify-center gap-1.5 py-3">
+      {/* 페이지 인디케이터 */}
+      <div className="flex justify-center items-center gap-2 pt-4 pb-2">
         {pages.map((_, i) => (
           <button
             key={i}
             onClick={() => goTo(i)}
             aria-label={`${i + 1}페이지`}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === page ? "w-6 bg-primary" : "w-1.5 bg-border"
+            className={`rounded-full transition-all duration-300 ${
+              i === page
+                ? "w-8 h-2 bg-primary"
+                : "w-2 h-2 bg-border hover:bg-muted-foreground"
             }`}
           />
         ))}
