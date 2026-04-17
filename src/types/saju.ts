@@ -21,7 +21,7 @@ export type {
 
 // ─── 캐릭터 & 채팅 타입 ───
 
-export type CharacterType = "charon_m" | "charon_f" | "doctor" | "minjun" | "haeun" | "jian" | "seojun" | "doyun";
+export type CharacterType = "charon_m" | "charon_f" | "doctor" | "minjun" | "haeun" | "jian" | "seojun" | "doyun" | "yeonhwa" | "mong" | "haeri";
 
 export interface ChatMessage {
   id: string;
