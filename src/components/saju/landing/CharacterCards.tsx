@@ -12,16 +12,17 @@ function getPerPage(w: number) {
   return 4;
 }
 
-const DRAG_THRESHOLD = 50; // px — 이 이상 드래그해야 페이지 전환
+const DRAG_THRESHOLD = 50;  // 페이지 전환 기준
+const MOVE_THRESHOLD = 8;   // 클릭 vs 드래그 구분 기준
 
 export default function CharacterCards() {
   const [page, setPage] = useState(0);
   const [perPage, setPerPage] = useState(4);
   const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
   const isHoveredRef = useRef(false);
   const dragStartX = useRef<number | null>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
+  // 실제로 움직였는지 여부 (클릭과 드래그 구분용)
+  const didMoveRef = useRef(false);
 
   const totalPages = useCallback(
     () => Math.ceil(CHARACTER_LIST.length / perPage),
@@ -49,50 +50,62 @@ export default function CharacterCards() {
   );
   const goTo = useCallback((i: number) => setPage(i), []);
 
-  // 자동 슬라이드
   useEffect(() => {
     const t = setInterval(() => {
-      if (!isHoveredRef.current && !isDragging) goNext();
+      if (!isHoveredRef.current && !didMoveRef.current) goNext();
     }, 5000);
     return () => clearInterval(t);
-  }, [goNext, isDragging]);
+  }, [goNext]);
 
-  // ── 드래그 핸들러 (마우스 + 터치 공통) ──────────────────────
+  // ── 드래그 핸들러 ─────────────────────────────────────────────
   const onDragStart = useCallback((clientX: number) => {
     dragStartX.current = clientX;
-    setIsDragging(true);
+    didMoveRef.current = false;
     setDragOffset(0);
   }, []);
 
   const onDragMove = useCallback((clientX: number) => {
     if (dragStartX.current === null) return;
-    setDragOffset(clientX - dragStartX.current);
+    const offset = clientX - dragStartX.current;
+    if (Math.abs(offset) > MOVE_THRESHOLD) {
+      didMoveRef.current = true;
+    }
+    if (didMoveRef.current) setDragOffset(offset);
   }, []);
 
-  const onDragEnd = useCallback(() => {
+  const onDragEnd = useCallback((currentOffset: number) => {
     if (dragStartX.current === null) return;
-    if (dragOffset < -DRAG_THRESHOLD) goNext();
-    else if (dragOffset > DRAG_THRESHOLD) goPrev();
+    if (currentOffset < -DRAG_THRESHOLD) goNext();
+    else if (currentOffset > DRAG_THRESHOLD) goPrev();
     dragStartX.current = null;
     setDragOffset(0);
-    setIsDragging(false);
-  }, [dragOffset, goNext, goPrev]);
+    // didMoveRef는 click 이벤트 이후 리셋 (setTimeout으로 순서 보장)
+    setTimeout(() => { didMoveRef.current = false; }, 0);
+  }, [goNext, goPrev]);
 
   // 마우스 이벤트
   const onMouseDown = (e: React.MouseEvent) => onDragStart(e.clientX);
-  const onMouseMove = (e: React.MouseEvent) => { if (isDragging) onDragMove(e.clientX); };
-  const onMouseUp = () => onDragEnd();
-  const onMouseLeave = () => { if (isDragging) onDragEnd(); };
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (dragStartX.current !== null) onDragMove(e.clientX);
+  };
+  const onMouseUp = (e: React.MouseEvent) => onDragEnd(e.clientX - (dragStartX.current ?? e.clientX));
+  const onMouseLeave = (e: React.MouseEvent) => {
+    if (dragStartX.current !== null) onDragEnd(e.clientX - (dragStartX.current ?? e.clientX));
+  };
 
   // 터치 이벤트
   const onTouchStart = (e: React.TouchEvent) => onDragStart(e.touches[0].clientX);
   const onTouchMove = (e: React.TouchEvent) => onDragMove(e.touches[0].clientX);
-  const onTouchEnd = () => onDragEnd();
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const endX = e.changedTouches[0].clientX;
+    onDragEnd(endX - (dragStartX.current ?? endX));
+  };
 
   const pages = Array.from({ length: totalPages() }, (_, i) =>
     CHARACTER_LIST.slice(i * perPage, (i + 1) * perPage)
   );
 
+  const isDragging = didMoveRef.current;
   const translateX = `calc(-${page * 100}% + ${dragOffset}px)`;
 
   return (
@@ -121,8 +134,7 @@ export default function CharacterCards() {
         {/* 캐러셀 트랙 */}
         <div className="overflow-hidden px-12 md:px-14">
           <div
-            ref={trackRef}
-            className={`flex ${isDragging ? "" : "transition-transform duration-500 ease-in-out"} cursor-grab active:cursor-grabbing select-none`}
+            className={`flex ${dragOffset === 0 ? "transition-transform duration-500 ease-in-out" : ""} cursor-grab active:cursor-grabbing select-none`}
             style={{ transform: `translateX(${translateX})` }}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
@@ -139,8 +151,16 @@ export default function CharacterCards() {
                 style={{ gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))` }}
               >
                 {pageChars.map((char) => (
-                  <CharacterCard key={char.id} char={char} isDragging={isDragging} />
+                  <CharacterCard
+                    key={char.id}
+                    char={char}
+                    onClickCapture={(e) => {
+                      // 드래그였다면 클릭 차단
+                      if (didMoveRef.current) e.preventDefault();
+                    }}
+                  />
                 ))}
+                {/* 마지막 페이지 빈 슬롯 */}
                 {pageChars.length < perPage &&
                   Array.from({ length: perPage - pageChars.length }, (_, i) => (
                     <div key={`empty-${i}`} />
@@ -172,75 +192,72 @@ export default function CharacterCards() {
 
 function CharacterCard({
   char,
-  isDragging,
+  onClickCapture,
 }: {
   char: (typeof CHARACTER_LIST)[number];
-  isDragging: boolean;
+  onClickCapture: (e: React.MouseEvent) => void;
 }) {
-  const cardContent = (
-    <div className="group rounded-2xl overflow-hidden cursor-pointer bg-card border border-border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
-      {/* 이미지 영역 */}
-      <div className="aspect-[3/4] relative flex-shrink-0">
-        <Image
-          src={char.cardImage}
-          alt={char.name}
-          fill
-          draggable={false}
-          className="object-cover group-hover:scale-[1.03] transition-transform duration-500 pointer-events-none"
-          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 90vw"
-        />
-        <div className="absolute top-3 left-3 z-[1]">
-          <span
-            className="text-xs font-bold px-3 py-1.5 rounded-full text-white shadow-lg"
-            style={{ backgroundColor: char.color }}
+  return (
+    <Link
+      href={`/chat/${char.id}`}
+      className="block h-full"
+      onClickCapture={onClickCapture}
+    >
+      <div className="group rounded-2xl overflow-hidden cursor-pointer bg-card border border-border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
+        {/* 이미지 영역 */}
+        <div className="aspect-[3/4] relative flex-shrink-0">
+          <Image
+            src={char.cardImage}
+            alt={char.name}
+            fill
+            draggable={false}
+            className="object-cover group-hover:scale-[1.03] transition-transform duration-500 pointer-events-none"
+            sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 90vw"
+          />
+          <div className="absolute top-3 left-3 z-[1]">
+            <span
+              className="text-xs font-bold px-3 py-1.5 rounded-full text-white shadow-lg"
+              style={{ backgroundColor: char.color }}
+            >
+              {char.service}
+            </span>
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+          <div
+            className="absolute bottom-0 left-0 right-0 p-4"
+            style={{ textShadow: "0 2px 8px rgba(0,0,0,0.7)" }}
           >
-            {char.service}
-          </span>
-        </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-        <div
-          className="absolute bottom-0 left-0 right-0 p-4"
-          style={{ textShadow: "0 2px 8px rgba(0,0,0,0.7)" }}
-        >
-          <h3 className="text-lg md:text-xl font-bold text-white">{char.name}</h3>
-          <p className="text-xs text-white/80 font-medium">{char.title}</p>
-        </div>
-      </div>
-
-      {/* 정보 영역 */}
-      <div className="p-4 flex flex-col flex-1">
-        <div className="flex-1">
-          <p className="text-sm text-muted-foreground italic leading-snug line-clamp-2 min-h-[2.625rem]">
-            &ldquo;{char.quote}&rdquo;
-          </p>
-          <div className="flex gap-1.5 mt-2.5 overflow-hidden">
-            {char.tags.map((tag) => (
-              <span
-                key={tag}
-                className="text-[11px] px-2 py-1 rounded-full border border-border text-muted-foreground bg-muted/50 whitespace-nowrap"
-              >
-                {tag}
-              </span>
-            ))}
+            <h3 className="text-lg md:text-xl font-bold text-white">{char.name}</h3>
+            <p className="text-xs text-white/80 font-medium">{char.title}</p>
           </div>
         </div>
 
-        {/* 대화하기 버튼 */}
-        <div className="flex items-center justify-end mt-4 pt-3 border-t border-border">
-          <span className="text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg shadow-md group-hover:bg-primary/90 transition-colors">
-            대화하기
-          </span>
+        {/* 정보 영역 — 모든 카드 동일한 패딩/여백 */}
+        <div className="p-4 flex flex-col flex-1">
+          <div className="flex-1 space-y-2.5">
+            <p className="text-sm text-muted-foreground italic leading-snug line-clamp-2 min-h-[2.625rem]">
+              &ldquo;{char.quote}&rdquo;
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {char.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-[11px] px-2 py-1 rounded-full border border-border text-muted-foreground bg-muted/50 whitespace-nowrap"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* 대화하기 버튼 — 항상 하단 고정 */}
+          <div className="flex items-center justify-end mt-4 pt-3 border-t border-border">
+            <span className="text-xs font-bold bg-primary text-primary-foreground px-3 py-1.5 rounded-lg shadow-md group-hover:bg-primary/90 transition-colors">
+              대화하기
+            </span>
+          </div>
         </div>
       </div>
-    </div>
-  );
-
-  // 드래그 중엔 Link 클릭 방지
-  return isDragging ? (
-    <div className="block h-full">{cardContent}</div>
-  ) : (
-    <Link href={`/chat/${char.id}`} className="block h-full">
-      {cardContent}
     </Link>
   );
 }
