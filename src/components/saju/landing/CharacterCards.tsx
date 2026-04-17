@@ -177,7 +177,7 @@ function CharacterCard({
   const cardContent = (
     <div className="group rounded-2xl overflow-hidden cursor-pointer bg-card border border-border shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
       {/* 이미지 영역 */}
-      <div className="aspect-[2/3] relative flex-shrink-0">
+      <div className="aspect-[3/4] relative flex-shrink-0">
         <Image
           src={char.cardImage}
           alt={char.name}
