@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { streamText } from 'ai';
 import { createClient } from '@/utils/supabase/server';
 import { buildSajuAnalysisPrompt, parseAIResponse } from '@/lib/saju/prompts';
 import { generateAdvancedSajuContext } from '@/lib/saju/advanced-analysis';
-import { getModel } from '@/lib/ai/model';
+import { createFallbackResponse } from '@/lib/ai/model';
 import type { FourPillarsDetail } from 'manseryeok';
 import type {
   FiveElementDistribution,
@@ -116,15 +115,13 @@ export async function POST(req: NextRequest) {
     const capturedReadingId = readingId;
     const capturedSupabase = supabase;
 
-    // streamText: AI 응답을 스트리밍하면서 onFinish에서 DB 저장
-    // → 클라이언트가 연결을 끊어도 onFinish는 서버에서 완료됨
-    const result = streamText({
-      model: getModel(),
+    // Google Gemini → Groq 자동 폴백 스트리밍
+    return await createFallbackResponse({
       system,
       prompt: user,
       maxOutputTokens: 12000,
       temperature: 0.7,
-      onFinish: async ({ text }) => {
+      onFinishText: async (text) => {
         try {
           const analysis = parseAIResponse<SajuAnalysis>(text);
           await capturedSupabase
@@ -144,8 +141,6 @@ export async function POST(req: NextRequest) {
         }
       },
     });
-
-    return result.toTextStreamResponse();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[saju/analyze] Error:', message);

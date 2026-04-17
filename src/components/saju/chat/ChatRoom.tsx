@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import { useChat } from '@ai-sdk/react';
 import { TextStreamChatTransport, type UIMessage } from 'ai';
 import { motion } from 'framer-motion';
@@ -90,10 +91,15 @@ export default function ChatRoom({
         })
       : undefined,
     messages: initialMessages,
-    // [별 시스템 비활성화] 메시지 완료 후 별 차감 없음
-    // onFinish: () => {
-    //   setStarBalance((prev) => Math.max(0, prev - 1));
-    // },
+    onError: (error) => {
+      if (error.message === 'ALL_MODELS_EXHAUSTED') {
+        toast.error('모든 AI 모델의 오늘 사용량이 초과되었습니다. 내일 다시 시도해주세요.', {
+          duration: 8000,
+        });
+      } else {
+        toast.error('AI 연결 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      }
+    },
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';

@@ -42,6 +42,7 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
       .from('saju_readings')
       .select('id, character_id, title, name, updated_at')
       .eq('user_id', user.id)
+      .not('character_id', 'is', null)
       .order('updated_at', { ascending: false })
       .limit(20);
 

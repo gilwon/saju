@@ -11,7 +11,7 @@
  */
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createGroq } from "@ai-sdk/groq";
-import { createGateway } from "ai";
+import { createGateway, generateText, streamText } from "ai";
 import type { EmbeddingModel, LanguageModel } from "ai";
 
 const provider = (process.env.AI_PROVIDER ?? "google") as "google" | "groq";
@@ -84,4 +84,122 @@ export function getEmbeddingModel(): EmbeddingModel {
     return gateway.textEmbeddingModel("google/gemini-embedding-001") as unknown as EmbeddingModel;
   }
   return googleAI.textEmbeddingModel("gemini-embedding-001") as unknown as EmbeddingModel;
+}
+
+// ---------------------------------------------------------------------------
+// 자동 폴백 유틸리티
+// Google Gemini 쿼터 초과 시 Groq 으로 자동 전환, 둘 다 초과 시 503 반환
+// ---------------------------------------------------------------------------
+
+/** 쿼터/레이트리밋 에러 여부 판별 */
+export function isQuotaError(err: unknown): boolean {
+  if (!err) return false;
+  if (typeof err === "object") {
+    const e = err as Record<string, unknown>;
+    if (e.statusCode === 429 || e.status === 429) return true;
+    if (e.cause) return isQuotaError(e.cause);
+  }
+  const msg = String(err).toLowerCase();
+  return (
+    msg.includes("resource_exhausted") ||
+    msg.includes("quota") ||
+    msg.includes("rate_limit_exceeded") ||
+    msg.includes("too many requests") ||
+    msg.includes("rate limit exceeded")
+  );
+}
+
+const FALLBACK_MODELS = (): LanguageModel[] => [
+  googleAI(GOOGLE_DEFAULT) as unknown as LanguageModel,
+  groqAI(GROQ_DEFAULT) as unknown as LanguageModel,
+];
+
+const MODEL_NAMES = ["Google Gemini", "Groq"];
+
+/** streamText + 자동 폴백. 모든 모델 소진 시 503 Response 반환 */
+export async function createFallbackResponse(
+  options: Omit<Parameters<typeof streamText>[0], "model"> & {
+    onFinishText?: (text: string) => Promise<void>;
+  }
+): Promise<Response> {
+  const { onFinishText, ...streamParams } = options;
+  const encoder = new TextEncoder();
+  const models = FALLBACK_MODELS();
+
+  for (let i = 0; i < models.length; i++) {
+    let reader: ReadableStreamDefaultReader<string> | null = null;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const result = streamText({ ...streamParams, model: models[i] } as any);
+      reader = result.textStream.getReader();
+
+      // 첫 청크를 읽어 쿼터 에러를 조기 감지
+      const firstRead = await reader.read();
+
+      const stream = new ReadableStream<Uint8Array>({
+        async start(controller) {
+          let fullText = "";
+          try {
+            if (!firstRead.done && firstRead.value) {
+              fullText += firstRead.value;
+              try { controller.enqueue(encoder.encode(firstRead.value)); } catch {}
+            }
+            while (true) {
+              const { done, value } = await reader!.read();
+              if (done) break;
+              fullText += value;
+              // 클라이언트가 끊겨도 AI 응답은 계속 수신해 fullText 완성
+              try { controller.enqueue(encoder.encode(value)); } catch {}
+            }
+          } catch (err) {
+            try { controller.error(err); } catch {}
+          } finally {
+            // 클라이언트 연결 여부와 무관하게 항상 DB 저장
+            if (onFinishText && fullText) {
+              await onFinishText(fullText).catch(console.error);
+            }
+            try { controller.close(); } catch {}
+          }
+        },
+      });
+
+      return new Response(stream, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
+    } catch (err) {
+      reader?.cancel().catch(() => {});
+      if (isQuotaError(err) && i < models.length - 1) {
+        console.warn(`[AI Fallback] ${MODEL_NAMES[i]} 쿼터 초과 → ${MODEL_NAMES[i + 1]} 전환`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  console.error("[AI Fallback] 모든 AI 모델 쿼터 초과");
+  return new Response("ALL_MODELS_EXHAUSTED", { status: 503 });
+}
+
+/** generateText + 자동 폴백 */
+export async function generateWithFallback(
+  options: Omit<Parameters<typeof generateText>[0], "model">
+) {
+  const models = FALLBACK_MODELS();
+  let lastError: unknown;
+
+  for (let i = 0; i < models.length; i++) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return await generateText({ ...options, model: models[i] } as any);
+    } catch (err) {
+      lastError = err;
+      if (isQuotaError(err) && i < models.length - 1) {
+        console.warn(`[AI Fallback] ${MODEL_NAMES[i]} 쿼터 초과 → ${MODEL_NAMES[i + 1]} 전환`);
+        continue;
+      }
+      break;
+    }
+  }
+
+  throw lastError;
 }

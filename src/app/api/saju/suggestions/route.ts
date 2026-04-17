@@ -1,5 +1,4 @@
-import { generateText } from "ai";
-import { getModel } from "@/lib/ai/model";
+import { generateWithFallback } from "@/lib/ai/model";
 
 export async function POST(req: Request) {
   const { characterId, characterName, lastAssistantMessage } =
@@ -12,8 +11,7 @@ export async function POST(req: Request) {
   // AI 답변의 마지막 500자만 사용 (토큰 절약)
   const context = lastAssistantMessage.slice(-500);
 
-  const { text } = await generateText({
-    model: getModel(),
+  const { text } = await generateWithFallback({
     system: `너는 사주 상담 서비스의 추천 질문 생성기야.
 사용자가 "${characterName}" 캐릭터에게 다음에 물어볼 만한 후속 질문 3개를 만들어.
 
