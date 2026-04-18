@@ -2,10 +2,11 @@
 
 import { z } from "zod";
 import { createClient } from "@/utils/supabase/server";
+import { CHARACTERS } from "@/lib/saju/characters";
 import type { ChatMessage, CharacterType } from "@/types/saju";
 
 const readingIdSchema = z.string().uuid();
-const characterSchema = z.enum(["charon_m", "charon_f", "doctor", "minjun", "haeun", "jian", "seojun", "doyun", "yeonhwa", "mong", "haeri"]);
+const characterSchema = z.enum(Object.keys(CHARACTERS) as [CharacterType, ...CharacterType[]]);
 
 /**
  * reading에 birth_city와 character_id를 업데이트합니다.

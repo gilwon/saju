@@ -37,6 +37,8 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
   }[] = [];
   let totalCoins = 0;
 
+  const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').filter(Boolean);
+
   if (user) {
     const { data: readings } = await supabase
       .from('saju_readings')
@@ -62,14 +64,11 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
       });
     }
 
-    // admin 체크
-    const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').filter(Boolean);
-    const isAdmin = user.email ? ADMIN_EMAILS.includes(user.email) : false;
+    const isAdmin = user.email ? adminEmails.includes(user.email) : false;
 
     if (isAdmin) {
       totalCoins = 99999;
     } else {
-      // user_stars에서 잔액 조회
       let { data: stars } = await supabase
         .from('user_stars')
         .select('balance')
@@ -84,8 +83,7 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
     }
   }
 
-  const ADMIN_EMAILS_LIST = (process.env.ADMIN_EMAILS || '').split(',').filter(Boolean);
-  const isAdminUser = user?.email ? ADMIN_EMAILS_LIST.includes(user.email) : false;
+  const isAdminUser = user?.email ? adminEmails.includes(user.email) : false;
 
   const sidebarUser = user
     ? {

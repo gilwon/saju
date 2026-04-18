@@ -269,8 +269,6 @@ ${compatContext ? `- 이것은 궁합 분석이야. ${firstName} 씨와 상대�
     messages: toModelMessages(rawMessages),
     maxOutputTokens: 4000,
     onFinishText: async (text) => {
-      const now = new Date().toISOString();
-
       await supabase.from("saju_chat_messages").insert({
         reading_id: readingId,
         role: "assistant",
@@ -278,14 +276,11 @@ ${compatContext ? `- 이것은 궁합 분석이야. ${firstName} 씨와 상대�
         character_id: characterId,
       });
 
-      // 메시지 저장마다 updated_at 갱신 → 사이드바 정렬 최신화
-      await supabase
-        .from("saju_readings")
-        .update({ updated_at: now })
-        .eq("id", readingId);
+      const isFirstMessage = reading.chat_used === 0 && userMessage;
 
-      if (reading.chat_used === 0 && userMessage) {
+      if (isFirstMessage) {
         const userText = extractText(userMessage);
+        let titleWritten = false;
         try {
           const { text: title } = await generateWithFallback({
             system: "사용자의 사주 상담 질문을 보고, 짧은 대화 제목(15자 이내)을 만들어. 제목만 출력해. 따옴표나 부호 없이.",
@@ -295,12 +290,24 @@ ${compatContext ? `- 이것은 궁합 분석이야. ${firstName} 씨와 상대�
           if (title.trim()) {
             await supabase
               .from("saju_readings")
-              .update({ title: title.trim().slice(0, 30), updated_at: now })
+              .update({ title: title.trim().slice(0, 30), updated_at: new Date().toISOString() })
               .eq("id", readingId);
+            titleWritten = true;
           }
         } catch {
           // 제목 생성 실패 무시
         }
+        if (!titleWritten) {
+          await supabase
+            .from("saju_readings")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", readingId);
+        }
+      } else {
+        await supabase
+          .from("saju_readings")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", readingId);
       }
     },
   });
