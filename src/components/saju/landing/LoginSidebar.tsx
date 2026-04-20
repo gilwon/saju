@@ -47,6 +47,7 @@ interface LoginSidebarProps {
   isAdmin?: boolean;
   profiles?: SajuProfile[];
   isMobile?: boolean;
+  onNavigate?: () => void;
 }
 
 const SIJI_LABELS: Record<number, string> = {
@@ -95,10 +96,10 @@ function profileToReadingUrl(p: SajuProfile): string {
     gender: p.gender,
     calendar: p.is_lunar ? 'lunar' : 'solar',
   });
-  return `/ko/reading?${params.toString()}`;
+  return `/reading?${params.toString()}`;
 }
 
-export default function LoginSidebar({ user, chatHistory = [], currentReading, profiles = [], isMobile = false }: LoginSidebarProps) {
+export default function LoginSidebar({ user, chatHistory = [], currentReading, profiles = [], isMobile = false, onNavigate }: LoginSidebarProps) {
   const [localHistory, setLocalHistory] = useState(chatHistory);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCharacterPicker, setShowCharacterPicker] = useState(false);
@@ -158,12 +159,12 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
             대화 기록을 저장하세요
           </p>
 
-          <a
-            href="/ko/login"
+          <Link
+            href="/login"
             className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 rounded-xl py-3 text-sm font-semibold text-primary-foreground transition-colors"
           >
             로그인 / 회원가입
-          </a>
+          </Link>
 
           {/* 비회원도 이용 가능한 종합 사주 리포트 */}
           <Link
@@ -223,13 +224,14 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">프로필</span>
-                  <a href="/ko/my-profiles" className="text-[10px] text-primary hover:text-primary/80 transition-colors">관리</a>
+                  <Link href="/my-profiles" className="text-[10px] text-primary hover:text-primary/80 transition-colors">관리</Link>
                 </div>
                 <div className="space-y-0.5">
                   {profiles.map((p) => (
-                    <a
+                    <Link
                       key={p.id}
                       href={profileToReadingUrl(p)}
+                      onClick={onNavigate}
                       className="flex items-center gap-2 px-1.5 py-1.5 rounded-lg hover:bg-secondary transition-colors group"
                     >
                       <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -242,13 +244,13 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
                         <polyline points="9 18 15 12 9 6" />
                       </svg>
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </div>
             ) : (
-              <a
-                href="/ko/my-profiles"
+              <Link
+                href="/my-profiles"
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-0.5"
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -256,7 +258,7 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
                 사용자 정보 추가
-              </a>
+              </Link>
             )}
           </div>
 
@@ -340,14 +342,9 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
               <div className="space-y-1">
                 {localHistory.map((item) => (
                   <div key={item.id} className="group relative flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-secondary transition-colors">
-                    <a
-                      href={`/ko/chat/${item.character_id}?r=${item.id}`}
-                      onClick={(e) => {
-                        if (item.title === '종합 사주 리포트') {
-                          e.preventDefault();
-                          window.location.href = '/ko/saju-report';
-                        }
-                      }}
+                    <Link
+                      href={item.title === '종합 사주 리포트' ? '/saju-report' : `/chat/${item.character_id}?r=${item.id}`}
+                      onClick={onNavigate}
                       className="flex items-center gap-2.5 min-w-0 flex-1"
                     >
                       <Image src={item.character_avatar} alt={item.character_name} width={28} height={28} className="rounded-full object-cover flex-shrink-0" />
@@ -359,7 +356,7 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
                           {new Date(item.updated_at).toLocaleDateString('ko-KR')}
                         </p>
                       </div>
-                    </a>
+                    </Link>
                     <button
                       onClick={async (e) => {
                         e.preventDefault();

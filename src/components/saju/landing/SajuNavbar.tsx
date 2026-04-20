@@ -57,8 +57,8 @@ export default function SajuNavbar({ isLoggedIn = false, isAdmin = false, onMenu
         <div className="flex items-center gap-2">
           <ThemeToggle />
           {!isLoggedIn ? (
-            <a
-              href="/ko/login"
+            <Link
+              href="/login"
               className="flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -67,7 +67,7 @@ export default function SajuNavbar({ isLoggedIn = false, isAdmin = false, onMenu
                 <line x1="15" y1="12" x2="3" y2="12" />
               </svg>
               로그인
-            </a>
+            </Link>
           ) : (
             <>
               {isAdmin && (

@@ -85,6 +85,7 @@ export default function MobileLayoutWrapper({
                 profiles={profiles}
                 totalCoins={totalCoins}
                 isMobile
+                onNavigate={() => setSidebarOpen(false)}
               />
             </aside>
           </div>

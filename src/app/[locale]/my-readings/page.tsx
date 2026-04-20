@@ -1,7 +1,7 @@
 import { redirect } from "@/i18n/routing";
 import { createClient } from "@/utils/supabase/server";
 import { getUserReadings } from "@/services/saju/actions";
-import SajuNavbar from "@/components/saju/landing/SajuNavbar";
+import SajuLayout from "@/components/saju/layout/SajuLayout";
 import { Link } from "@/i18n/routing";
 import { formatBirthYMD } from "@/lib/utils";
 import type { ReadingStatus } from "@/types/saju";
@@ -46,9 +46,7 @@ export default async function MyReadingsPage() {
   const { data: readings } = await getUserReadings(user.id);
 
   return (
-    <div className="min-h-screen bg-white">
-      <SajuNavbar />
-
+    <SajuLayout>
       <main className="max-w-3xl mx-auto px-5 py-8">
         <h1 className="text-2xl font-bold text-[#191F28] mb-6">
           내 분석 내역
@@ -130,6 +128,6 @@ export default async function MyReadingsPage() {
           </div>
         )}
       </main>
-    </div>
+    </SajuLayout>
   );
 }
