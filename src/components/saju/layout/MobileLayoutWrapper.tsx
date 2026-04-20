@@ -4,6 +4,7 @@ import { useState } from 'react';
 import SajuNavbar from '@/components/saju/landing/SajuNavbar';
 import LoginSidebar from '@/components/saju/landing/LoginSidebar';
 import type { CharacterType } from '@/lib/saju/characters';
+import type { SajuProfile } from '@/types/saju';
 
 interface MobileLayoutWrapperProps {
   isLoggedIn: boolean;
@@ -36,6 +37,7 @@ interface MobileLayoutWrapperProps {
   };
   totalCoins: number;
   isAdmin?: boolean;
+  profiles?: SajuProfile[];
   children: React.ReactNode;
 }
 
@@ -46,6 +48,7 @@ export default function MobileLayoutWrapper({
   currentReading,
   totalCoins,
   isAdmin = false,
+  profiles = [],
   children,
 }: MobileLayoutWrapperProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -61,6 +64,7 @@ export default function MobileLayoutWrapper({
           chatHistory={chatHistory}
           currentReading={currentReading}
           totalCoins={totalCoins}
+          profiles={profiles}
         />
 
         {/* 모바일: 슬라이드 오버레이 사이드바 */}
@@ -78,6 +82,7 @@ export default function MobileLayoutWrapper({
                 user={sidebarUser}
                 chatHistory={chatHistory}
                 currentReading={currentReading}
+                profiles={profiles}
                 totalCoins={totalCoins}
                 isMobile
               />

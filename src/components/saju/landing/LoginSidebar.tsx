@@ -7,6 +7,9 @@ import { deleteReading } from '@/services/saju/chat-actions';
 import Image from 'next/image';
 import { Link } from '@/i18n/routing';
 import { CHARACTER_LIST, type CharacterType } from '@/lib/saju/characters';
+import type { SajuProfile } from '@/types/saju';
+import { HOUR_TO_SIJI as HOUR_TO_SIJI_MAP } from '@/lib/saju/siji';
+import { formatBirthYMD } from '@/lib/utils';
 
 interface ChatHistoryItem {
   id: string;
@@ -42,6 +45,7 @@ interface LoginSidebarProps {
   currentReading?: CurrentReading;
   totalCoins?: number;
   isAdmin?: boolean;
+  profiles?: SajuProfile[];
   isMobile?: boolean;
 }
 
@@ -80,7 +84,21 @@ const HOUR_TO_SIJI: Record<number, string> = {
   17: 'yu', 18: 'yu', 19: 'sul', 20: 'sul', 21: 'hae', 22: 'hae',
 };
 
-export default function LoginSidebar({ user, chatHistory = [], currentReading, isMobile = false }: LoginSidebarProps) {
+function profileToReadingUrl(p: SajuProfile): string {
+  const sijiValue = p.birth_hour !== null ? (HOUR_TO_SIJI_MAP[p.birth_hour] ?? 'unknown') : 'unknown';
+  const params = new URLSearchParams({
+    name: p.name,
+    year: String(p.birth_year),
+    month: String(p.birth_month),
+    day: String(p.birth_day),
+    hour: sijiValue,
+    gender: p.gender,
+    calendar: p.is_lunar ? 'lunar' : 'solar',
+  });
+  return `/ko/reading?${params.toString()}`;
+}
+
+export default function LoginSidebar({ user, chatHistory = [], currentReading, profiles = [], isMobile = false }: LoginSidebarProps) {
   const [localHistory, setLocalHistory] = useState(chatHistory);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCharacterPicker, setShowCharacterPicker] = useState(false);
@@ -232,6 +250,56 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, i
 
           {/* 대화 기록: 스크롤 가능한 중간 영역 */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
+
+          {/* 프로필 섹션 */}
+          {profiles.length > 0 && (
+            <div className="px-3 pt-4 pb-2">
+              <div className="flex items-center justify-between px-1 mb-2">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  프로필
+                </h3>
+                <a
+                  href="/ko/my-profiles"
+                  className="text-[11px] text-primary hover:text-primary/80 transition-colors"
+                >
+                  관리
+                </a>
+              </div>
+              <div className="space-y-0.5">
+                {profiles.map((p) => (
+                  <a
+                    key={p.id}
+                    href={profileToReadingUrl(p)}
+                    className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-secondary transition-colors group"
+                  >
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {p.name}
+                        <span className="text-muted-foreground font-normal ml-1 text-xs">
+                          {p.gender === 'male' ? '남' : '여'}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {formatBirthYMD(p.birth_year, p.birth_month, p.birth_day)}
+                        {p.is_lunar ? ' (음)' : ''}
+                      </p>
+                    </div>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </a>
+                ))}
+              </div>
+              <div className="mt-2 border-t border-sidebar-border" />
+            </div>
+          )}
+
           <div className="px-3 pt-4">
             <div className="flex items-center justify-between px-1 mb-3">
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">

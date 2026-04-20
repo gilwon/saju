@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import MobileLayoutWrapper from './MobileLayoutWrapper';
 import { CHARACTERS, type CharacterType } from '@/lib/saju/characters';
+import type { SajuProfile } from '@/types/saju';
 
 interface SajuLayoutProps {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
   } = await supabase.auth.getUser();
 
   // 로그인 유저면 대화 기록 조회
+  let profiles: SajuProfile[] = [];
   let chatHistory: {
     id: string;
     character_id: CharacterType;
@@ -40,6 +42,15 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
   const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').filter(Boolean);
 
   if (user) {
+    const { data: profileData } = await supabase
+      .from('saju_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (profileData) profiles = profileData as SajuProfile[];
+
     const { data: readings } = await supabase
       .from('saju_readings')
       .select('id, character_id, title, name, updated_at')
@@ -102,6 +113,7 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
       currentReading={currentReading}
       totalCoins={totalCoins}
       isAdmin={isAdminUser}
+      profiles={profiles}
     >
       {children}
     </MobileLayoutWrapper>
