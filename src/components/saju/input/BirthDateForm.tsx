@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,22 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const SIJI = [
-  { value: "unknown", label: "모름" },
-  { value: "ja", label: "자시 (23:00~01:00)" },
-  { value: "chuk", label: "축시 (01:00~03:00)" },
-  { value: "in", label: "인시 (03:00~05:00)" },
-  { value: "myo", label: "묘시 (05:00~07:00)" },
-  { value: "jin", label: "진시 (07:00~09:00)" },
-  { value: "sa", label: "사시 (09:00~11:00)" },
-  { value: "o", label: "오시 (11:00~13:00)" },
-  { value: "mi", label: "미시 (13:00~15:00)" },
-  { value: "sin", label: "신시 (15:00~17:00)" },
-  { value: "yu", label: "유시 (17:00~19:00)" },
-  { value: "sul", label: "술시 (19:00~21:00)" },
-  { value: "hae", label: "해시 (21:00~23:00)" },
-];
+import { SIJI_LIST } from "@/lib/saju/siji";
 
 function getDaysInMonth(year: number, month: number): number {
   if (!year || !month) return 31;
@@ -42,29 +27,58 @@ export interface BirthDateFormData {
   calendar: "solar" | "lunar";
 }
 
-interface BirthDateFormProps {
-  onSubmit: (data: BirthDateFormData) => void;
+export interface BirthDateInitialData {
+  name?: string;
+  year?: string;
+  month?: string;
+  day?: string;
+  time?: string;
+  gender?: "male" | "female";
+  calendar?: "solar" | "lunar";
 }
 
-export default function BirthDateForm({ onSubmit }: BirthDateFormProps) {
-  const [name, setName] = useState("");
-  const [year, setYear] = useState("");
-  const [month, setMonth] = useState("");
-  const [day, setDay] = useState("");
-  const [time, setTime] = useState("");
-  const [gender, setGender] = useState<"male" | "female" | "">("");
-  const [calendar, setCalendar] = useState<"solar" | "lunar">("solar");
+interface BirthDateFormProps {
+  onSubmit: (data: BirthDateFormData) => void;
+  initialData?: BirthDateInitialData | null;
+  onSaveProfile?: (data: BirthDateFormData) => Promise<void>;
+  isSavingProfile?: boolean;
+}
+
+export default function BirthDateForm({
+  onSubmit,
+  initialData,
+  onSaveProfile,
+  isSavingProfile,
+}: BirthDateFormProps) {
+  const [name, setName] = useState(initialData?.name ?? "");
+  const [year, setYear] = useState(initialData?.year ?? "");
+  const [month, setMonth] = useState(initialData?.month ?? "");
+  const [day, setDay] = useState(initialData?.day ?? "");
+  const [time, setTime] = useState(initialData?.time ?? "");
+  const [gender, setGender] = useState<"male" | "female" | "">(
+    initialData?.gender ?? ""
+  );
+  const [calendar, setCalendar] = useState<"solar" | "lunar">(
+    initialData?.calendar ?? "solar"
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const maxDay = useMemo(() => {
-    return getDaysInMonth(Number(year), Number(month));
-  }, [year, month]);
+  useEffect(() => {
+    if (!initialData) return;
+    setName(initialData.name ?? "");
+    setYear(initialData.year ?? "");
+    setMonth(initialData.month ?? "");
+    setDay(initialData.day ?? "");
+    setTime(initialData.time ?? "");
+    setGender(initialData.gender ?? "");
+    setCalendar(initialData.calendar ?? "solar");
+    setErrors({});
+  }, [initialData]);
 
-  // 월이 바뀌면 일 초과 시 리셋
+  const maxDay = useMemo(() => getDaysInMonth(Number(year), Number(month)), [year, month]);
+
   useMemo(() => {
-    if (day && Number(day) > maxDay) {
-      setDay("");
-    }
+    if (day && Number(day) > maxDay) setDay("");
   }, [maxDay, day]);
 
   const validate = (): boolean => {
@@ -78,19 +92,28 @@ export default function BirthDateForm({ onSubmit }: BirthDateFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
+  const currentFormData = (): BirthDateFormData => ({
+    name: name.trim(),
+    year,
+    month,
+    day,
+    time: time || "unknown",
+    gender: gender as "male" | "female",
+    calendar,
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    onSubmit({
-      name: name.trim(),
-      year,
-      month,
-      day,
-      time: time || "unknown",
-      gender: gender as "male" | "female",
-      calendar,
-    });
+    onSubmit(currentFormData());
   };
+
+  const handleSaveProfile = async () => {
+    if (!validate() || !onSaveProfile) return;
+    await onSaveProfile(currentFormData());
+  };
+
+  const canSave = name.trim() && year && month && day && gender;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -173,7 +196,7 @@ export default function BirthDateForm({ onSubmit }: BirthDateFormProps) {
             <SelectValue placeholder="시간을 선택하세요 (선택)" />
           </SelectTrigger>
           <SelectContent>
-            {SIJI.map((s) => (
+            {SIJI_LIST.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
               </SelectItem>
@@ -247,13 +270,23 @@ export default function BirthDateForm({ onSubmit }: BirthDateFormProps) {
         </div>
       </div>
 
-      {/* 다음 버튼 */}
       <button
         type="submit"
         className="w-full bg-[#3182F6] hover:bg-[#1B64DA] text-white rounded-xl py-4 text-lg font-semibold transition-colors mt-2"
       >
         다음
       </button>
+
+      {onSaveProfile && (
+        <button
+          type="button"
+          onClick={handleSaveProfile}
+          disabled={!canSave || isSavingProfile}
+          className="w-full border border-gray-200 text-[#8B95A1] hover:border-[#3182F6] hover:text-[#3182F6] rounded-xl py-3 text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isSavingProfile ? "저장 중..." : "이 정보 프로필로 저장"}
+        </button>
+      )}
     </form>
   );
 }

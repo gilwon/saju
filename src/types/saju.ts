@@ -205,6 +205,22 @@ export interface SajuInputForm {
   concerns: ConcernType[];
 }
 
+/** 저장된 사주 프로필 */
+export interface SajuProfile {
+  id: string;
+  user_id: string;
+  name: string;
+  gender: Gender;
+  birth_year: number;
+  birth_month: number;
+  birth_day: number;
+  birth_hour: number | null;
+  is_lunar: boolean;
+  is_leap_month: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 /** 궁합 분석 입력 폼 */
 export interface CompatibilityInputForm {
   readingId: string;           // 본인 사주 분석 ID

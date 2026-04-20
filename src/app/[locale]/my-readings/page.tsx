@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getUserReadings } from "@/services/saju/actions";
 import SajuNavbar from "@/components/saju/landing/SajuNavbar";
 import { Link } from "@/i18n/routing";
+import { formatBirthYMD } from "@/lib/utils";
 import type { ReadingStatus } from "@/types/saju";
 
 const STATUS_BADGE: Record<
@@ -30,13 +31,6 @@ function formatDate(dateStr: string): string {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function formatBirthDate(
-  year: number,
-  month: number,
-  day: number,
-): string {
-  return `${year}.${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}`;
-}
 
 export default async function MyReadingsPage() {
   const supabase = await createClient();
@@ -118,7 +112,7 @@ export default async function MyReadingsPage() {
                         </span>
                       </div>
                       <p className="text-sm text-[#8B95A1]">
-                        {formatBirthDate(
+                        {formatBirthYMD(
                           reading.birth_year,
                           reading.birth_month,
                           reading.birth_day,
