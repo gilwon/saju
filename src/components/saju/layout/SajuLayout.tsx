@@ -36,6 +36,8 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
     title: string | null;
     reading_name: string;
     updated_at: string;
+    href?: string;
+    isReadingResult?: boolean;
   }[] = [];
   let totalCoins = 0;
 
@@ -51,31 +53,55 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
 
     if (profileData) profiles = profileData as SajuProfile[];
 
-    const { data: readings } = await supabase
-      .from('saju_readings')
-      .select('id, character_id, title, name, updated_at')
-      .eq('user_id', user.id)
-      .not('character_id', 'is', null)
-      .order('updated_at', { ascending: false })
-      .limit(20);
+    const [{ data: chatReadings }, { data: resultReadings }] = await Promise.all([
+      supabase
+        .from('saju_readings')
+        .select('id, character_id, title, name, updated_at')
+        .eq('user_id', user.id)
+        .not('character_id', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(15),
+      supabase
+        .from('saju_readings')
+        .select('id, name, updated_at')
+        .eq('user_id', user.id)
+        .is('character_id', null)
+        .eq('status', 'completed')
+        .order('updated_at', { ascending: false })
+        .limit(5),
+    ]);
 
-    if (readings) {
-      chatHistory = readings.map((r) => {
-        const rawCharId = r.character_id as string;
-        const charExists = !!CHARACTERS[rawCharId as keyof typeof CHARACTERS];
-        const charId = (charExists ? rawCharId : 'charon_m') as CharacterType;
-        const char = CHARACTERS[charId];
-        return {
-          id: r.id,
-          character_id: charId,
-          character_name: char.name,
-          character_avatar: char.avatar,
-          title: (r as Record<string, unknown>).title as string | null,
-          reading_name: (r as Record<string, unknown>).name as string,
-          updated_at: r.updated_at,
-        };
-      });
-    }
+    const chatItems = (chatReadings ?? []).map((r) => {
+      const rawCharId = r.character_id as string;
+      const charExists = !!CHARACTERS[rawCharId as keyof typeof CHARACTERS];
+      const charId = (charExists ? rawCharId : 'charon_m') as CharacterType;
+      const char = CHARACTERS[charId];
+      return {
+        id: r.id,
+        character_id: charId,
+        character_name: char.name,
+        character_avatar: char.avatar,
+        title: (r as Record<string, unknown>).title as string | null,
+        reading_name: (r as Record<string, unknown>).name as string,
+        updated_at: r.updated_at,
+      };
+    });
+
+    const resultItems = (resultReadings ?? []).map((r) => ({
+      id: r.id,
+      character_id: 'charon_m' as CharacterType,
+      character_name: '',
+      character_avatar: '',
+      title: null,
+      reading_name: (r as Record<string, unknown>).name as string,
+      updated_at: r.updated_at,
+      href: `/reading/${r.id}/result`,
+      isReadingResult: true,
+    }));
+
+    chatHistory = [...chatItems, ...resultItems].sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
 
     const isAdmin = user.email ? adminEmails.includes(user.email) : false;
 

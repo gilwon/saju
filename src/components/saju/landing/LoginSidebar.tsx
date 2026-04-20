@@ -19,6 +19,8 @@ interface ChatHistoryItem {
   title: string | null;
   reading_name: string;
   updated_at: string;
+  href?: string;
+  isReadingResult?: boolean;
 }
 
 interface CurrentReading {
@@ -340,17 +342,31 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
               </p>
             ) : (
               <div className="space-y-1">
-                {localHistory.map((item) => (
+                {localHistory.map((item) => {
+                  const itemHref = item.href
+                    ?? (item.title === '종합 사주 리포트' ? '/saju-report' : `/chat/${item.character_id}?r=${item.id}`);
+                  return (
                   <div key={item.id} className="group relative flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-secondary transition-colors">
                     <Link
-                      href={item.title === '종합 사주 리포트' ? '/saju-report' : `/chat/${item.character_id}?r=${item.id}`}
+                      href={itemHref}
                       onClick={onNavigate}
                       className="flex items-center gap-2.5 min-w-0 flex-1"
                     >
-                      <Image src={item.character_avatar} alt={item.character_name} width={28} height={28} className="rounded-full object-cover flex-shrink-0" />
+                      {item.isReadingResult ? (
+                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <Image src={item.character_avatar} alt={item.character_name} width={28} height={28} className="rounded-full object-cover flex-shrink-0" />
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-foreground truncate">
-                          {item.title || `${item.character_name} · ${item.reading_name}`}
+                          {item.isReadingResult
+                            ? `${item.reading_name} 사주 분석`
+                            : (item.title || `${item.character_name} · ${item.reading_name}`)}
                         </p>
                         <p className="text-[11px] text-muted-foreground">
                           {new Date(item.updated_at).toLocaleDateString('ko-KR')}
@@ -383,7 +399,8 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
                       </svg>
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

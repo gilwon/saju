@@ -22,6 +22,8 @@ interface MobileLayoutWrapperProps {
     title: string | null;
     reading_name: string;
     updated_at: string;
+    href?: string;
+    isReadingResult?: boolean;
   }[];
   currentReading?: {
     id: string;
