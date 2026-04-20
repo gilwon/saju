@@ -116,68 +116,78 @@ const FALLBACK_MODELS = (): LanguageModel[] => [
 
 const MODEL_NAMES = ["Google Gemini", "Groq"];
 
-/** streamText + 자동 폴백. 모든 모델 소진 시 503 Response 반환 */
+/** streamText + 자동 폴백. 응답 헤더를 즉시 반환하고 AI 생성은 스트림에서 비동기 처리 */
 export async function createFallbackResponse(
   options: Omit<Parameters<typeof streamText>[0], "model"> & {
     onFinishText?: (text: string) => Promise<void>;
+    onError?: (err: unknown) => Promise<void>;
   }
 ): Promise<Response> {
-  const { onFinishText, ...streamParams } = options;
+  const { onFinishText, onError, ...streamParams } = options;
   const encoder = new TextEncoder();
-  const models = FALLBACK_MODELS();
 
-  for (let i = 0; i < models.length; i++) {
-    let reader: ReadableStreamDefaultReader<string> | null = null;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = streamText({ ...streamParams, model: models[i] } as any);
-      reader = result.textStream.getReader();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const models = FALLBACK_MODELS();
 
-      // 첫 청크를 읽어 쿼터 에러를 조기 감지
-      const firstRead = await reader.read();
+      for (let i = 0; i < models.length; i++) {
+        let reader: ReadableStreamDefaultReader<string> | null = null;
+        let fullText = "";
+        let gotTokens = false;
 
-      const stream = new ReadableStream<Uint8Array>({
-        async start(controller) {
-          let fullText = "";
-          try {
-            if (!firstRead.done && firstRead.value) {
-              fullText += firstRead.value;
-              try { controller.enqueue(encoder.encode(firstRead.value)); } catch {}
-            }
-            while (true) {
-              const { done, value } = await reader!.read();
-              if (done) break;
-              fullText += value;
-              // 클라이언트가 끊겨도 AI 응답은 계속 수신해 fullText 완성
-              try { controller.enqueue(encoder.encode(value)); } catch {}
-            }
-          } catch (err) {
-            try { controller.error(err); } catch {}
-          } finally {
-            // 클라이언트 연결 여부와 무관하게 항상 DB 저장
-            if (onFinishText && fullText) {
-              await onFinishText(fullText).catch(console.error);
-            }
-            try { controller.close(); } catch {}
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const result = streamText({ ...streamParams, model: models[i] } as any);
+          reader = result.textStream.getReader();
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            gotTokens = true;
+            fullText += value;
+            // 클라이언트가 끊겨도 AI 응답은 계속 수신해 fullText 완성
+            try { controller.enqueue(encoder.encode(value)); } catch {}
           }
-        },
-      });
 
-      return new Response(stream, {
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
-    } catch (err) {
-      reader?.cancel().catch(() => {});
-      if (isQuotaError(err) && i < models.length - 1) {
-        console.warn(`[AI Fallback] ${MODEL_NAMES[i]} 쿼터 초과 → ${MODEL_NAMES[i + 1]} 전환`);
-        continue;
+          // 성공: DB 저장
+          if (onFinishText && fullText) {
+            await onFinishText(fullText).catch(console.error);
+          }
+          try { controller.close(); } catch {}
+          return;
+        } catch (err) {
+          reader?.cancel().catch(() => {});
+
+          // 토큰 미수신 상태의 쿼터 에러 → 다음 모델 시도
+          if (!gotTokens && isQuotaError(err) && i < models.length - 1) {
+            console.warn(`[AI Fallback] ${MODEL_NAMES[i]} 쿼터 초과 → ${MODEL_NAMES[i + 1]} 전환`);
+            continue;
+          }
+
+          console.error(`[AI Fallback] ${MODEL_NAMES[i]} 오류:`, err);
+
+          if (onFinishText && fullText) {
+            await onFinishText(fullText).catch(console.error);
+          } else if (onError) {
+            await onError(err).catch(console.error);
+          }
+
+          try { controller.error(err); } catch {}
+          return;
+        }
       }
-      throw err;
-    }
-  }
 
-  console.error("[AI Fallback] 모든 AI 모델 쿼터 초과");
-  return new Response("ALL_MODELS_EXHAUSTED", { status: 503 });
+      // 모든 모델 쿼터 초과
+      const exhaustedErr = new Error("모든 AI 모델 쿼터 초과");
+      console.error("[AI Fallback]", exhaustedErr);
+      if (onError) await onError(exhaustedErr).catch(console.error);
+      try { controller.error(exhaustedErr); } catch {}
+    },
+  });
+
+  return new Response(stream, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
 }
 
 /** generateText + 자동 폴백 */

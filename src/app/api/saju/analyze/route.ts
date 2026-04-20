@@ -43,9 +43,17 @@ export async function POST(req: NextRequest) {
     // 소유권 확인 (status 변경 전에 수행)
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (authUser) {
-      // 로그인 유저: 자신의 reading인지 확인
-      if (reading.user_id !== authUser.id) {
+      // 로그인 유저: 자신의 reading이거나 user_id=null(게스트 생성 후 로그인) 허용
+      if (reading.user_id !== null && reading.user_id !== authUser.id) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      // 게스트 reading → 로그인 유저에게 연결
+      if (reading.user_id === null) {
+        await supabase
+          .from('saju_readings')
+          .update({ user_id: authUser.id })
+          .eq('id', readingId)
+          .is('user_id', null);
       }
     } else {
       // 게스트: user_id가 null이어야 함
@@ -116,7 +124,7 @@ export async function POST(req: NextRequest) {
     const capturedReadingId = readingId;
     const capturedSupabase = supabase;
 
-    // Google Gemini → Groq 자동 폴백 스트리밍
+    // Google Gemini → Groq 자동 폴백 스트리밍 (헤더 즉시 반환, AI 생성은 백그라운드)
     return await createFallbackResponse({
       system,
       prompt: user,
@@ -140,6 +148,12 @@ export async function POST(req: NextRequest) {
             .update({ status: 'failed', updated_at: new Date().toISOString() })
             .eq('id', capturedReadingId);
         }
+      },
+      onError: async () => {
+        await capturedSupabase
+          .from('saju_readings')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .eq('id', capturedReadingId);
       },
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +14,7 @@ export default function PaymentSuccess({ readingId }: PaymentSuccessProps) {
   const router = useRouter();
   const [state, setState] = useState<AnalysisState>("idle");
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const started = useRef(false);
 
   // 로그인 상태 확인
   useEffect(() => {
@@ -21,9 +22,7 @@ export default function PaymentSuccess({ readingId }: PaymentSuccessProps) {
       try {
         const { createClient } = await import("@/utils/supabase/client");
         const supabase = createClient();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         setIsLoggedIn(!!user);
       } catch {
         setIsLoggedIn(false);
@@ -32,38 +31,75 @@ export default function PaymentSuccess({ readingId }: PaymentSuccessProps) {
     checkAuth();
   }, []);
 
-  // AI 분석 트리거
-  const startAnalysis = useCallback(async () => {
-    if (state === "analyzing" || state === "completed") return;
+  // 분석 시작 + 폴링으로 완료 감지
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
 
-    setState("analyzing");
-    try {
-      const res = await fetch("/api/saju/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ readingId }),
-      });
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "분석 실패");
+    async function run() {
+      setState("analyzing");
+
+      // 분석 API 호출 (헤더만 확인, 스트림 본문은 서버에서 처리)
+      try {
+        const res = await fetch("/api/saju/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ readingId }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          console.error("[PaymentSuccess] analyze 실패:", data.error);
+          if (!cancelled) setState("failed");
+          return;
+        }
+      } catch (err) {
+        console.error("[PaymentSuccess] analyze 요청 오류:", err);
+        if (!cancelled) setState("failed");
+        return;
       }
 
-      setState("completed");
+      // Supabase 폴링으로 완료 감지 (2초 간격)
+      const { createClient } = await import("@/utils/supabase/client");
+      const supabase = createClient();
 
-      // 잠시 후 결과 페이지로 이동
-      setTimeout(() => {
-        router.push(`/reading/${readingId}/result`);
-      }, 1500);
-    } catch (error) {
-      console.error("Analysis error:", error);
-      setState("failed");
+      async function poll() {
+        if (cancelled) return;
+        try {
+          const { data } = await supabase
+            .from("saju_readings")
+            .select("status")
+            .eq("id", readingId)
+            .single();
+
+          if (data?.status === "completed") {
+            if (!cancelled) {
+              setState("completed");
+              setTimeout(() => router.push(`/reading/${readingId}/result`), 1500);
+            }
+          } else if (data?.status === "failed") {
+            if (!cancelled) setState("failed");
+          } else {
+            if (!cancelled) pollTimer = setTimeout(poll, 2000);
+          }
+        } catch {
+          if (!cancelled) pollTimer = setTimeout(poll, 3000);
+        }
+      }
+
+      poll();
     }
-  }, [readingId, router, state]);
 
-  useEffect(() => {
-    startAnalysis();
-  }, [startAnalysis]);
+    run();
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
+  }, [readingId, router]);
 
   const handleGoogleLogin = () => {
     // 로그인 후 현재 페이지로 돌아오도록 redirectTo 설정
@@ -127,10 +163,7 @@ export default function PaymentSuccess({ readingId }: PaymentSuccessProps) {
               다시 시도해주세요. 문제가 계속되면 고객센터로 연락해주세요.
             </p>
             <Button
-              onClick={() => {
-                setState("idle");
-                startAnalysis();
-              }}
+              onClick={() => window.location.reload()}
               className="bg-[#3182F6] hover:bg-[#1B64DA] text-white rounded-xl px-6 h-11 text-sm font-semibold"
             >
               다시 시도
