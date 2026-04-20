@@ -200,22 +200,64 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
       ) : (
         /* ── 로그인 상태 ── */
         <div className="flex flex-col h-full overflow-hidden">
-          {/* 유저 정보 */}
-          <div className="flex-shrink-0 flex items-center gap-3 px-4 py-4 border-b border-sidebar-border">
-            {user.avatar ? (
-              <Image src={user.avatar} alt="" width={32} height={32} className="rounded-full" />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="text-xs font-bold text-primary">
-                  {(user.name || user.email || '?')[0]}
-                </span>
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
+          {/* 유저 정보 + 프로필 */}
+          <div className="flex-shrink-0 px-4 pt-3 pb-2 border-b border-sidebar-border">
+            {/* 아바타 + 이름 */}
+            <div className="flex items-center gap-3 mb-2.5">
+              {user.avatar ? (
+                <Image src={user.avatar} alt="" width={32} height={32} className="rounded-full flex-shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-primary">
+                    {(user.name || user.email || '?')[0]}
+                  </span>
+                </div>
+              )}
               <p className="text-sm font-semibold text-foreground truncate">
-                {user.name || user.email}
+                {user.name || user.email?.split('@')[0]}
               </p>
             </div>
+
+            {/* 프로필 목록 or 추가 버튼 */}
+            {profiles.length > 0 ? (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">프로필</span>
+                  <a href="/ko/my-profiles" className="text-[10px] text-primary hover:text-primary/80 transition-colors">관리</a>
+                </div>
+                <div className="space-y-0.5">
+                  {profiles.map((p) => (
+                    <a
+                      key={p.id}
+                      href={profileToReadingUrl(p)}
+                      className="flex items-center gap-2 px-1.5 py-1.5 rounded-lg hover:bg-secondary transition-colors group"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[11px] font-bold text-primary">{p.name[0]}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-medium text-foreground">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground ml-1.5">{p.birth_year}년</span>
+                      </div>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <a
+                href="/ko/my-profiles"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors py-0.5"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                사용자 정보 추가
+              </a>
+            )}
           </div>
 
           {/* [별 시스템 비활성화] 별 잔여량 / 충전 링크 숨김 */}
@@ -251,54 +293,6 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
           {/* 대화 기록: 스크롤 가능한 중간 영역 */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
 
-          {/* 프로필 섹션 */}
-          {profiles.length > 0 && (
-            <div className="px-3 pt-4 pb-2">
-              <div className="flex items-center justify-between px-1 mb-2">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  프로필
-                </h3>
-                <a
-                  href="/ko/my-profiles"
-                  className="text-[11px] text-primary hover:text-primary/80 transition-colors"
-                >
-                  관리
-                </a>
-              </div>
-              <div className="space-y-0.5">
-                {profiles.map((p) => (
-                  <a
-                    key={p.id}
-                    href={profileToReadingUrl(p)}
-                    className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-secondary transition-colors group"
-                  >
-                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                        <circle cx="12" cy="7" r="4" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-foreground truncate">
-                        {p.name}
-                        <span className="text-muted-foreground font-normal ml-1 text-xs">
-                          {p.gender === 'male' ? '남' : '여'}
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {formatBirthYMD(p.birth_year, p.birth_month, p.birth_day)}
-                        {p.is_lunar ? ' (음)' : ''}
-                      </p>
-                    </div>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                      <polyline points="9 18 15 12 9 6" />
-                    </svg>
-                  </a>
-                ))}
-              </div>
-              <div className="mt-2 border-t border-sidebar-border" />
-            </div>
-          )}
 
           <div className="px-3 pt-4">
             <div className="flex items-center justify-between px-1 mb-3">
