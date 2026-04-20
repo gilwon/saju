@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import type { SajuReading } from "@/types/saju";
-import SajuNavbar from "@/components/saju/landing/SajuNavbar";
+import SajuLayout from "@/components/saju/layout/SajuLayout";
 import PaymentSuccess from "@/components/saju/payment/PaymentSuccess";
 import ReadingPreview from "./ReadingPreview";
 
@@ -32,61 +32,65 @@ export default async function ReadingPage({ params }: PageProps) {
     case "paid":
     case "generating":
       return (
-        <main className="min-h-screen bg-[#F8F9FA]">
-          <SajuNavbar />
-          <PaymentSuccess readingId={reading.id} />
-        </main>
+        <SajuLayout>
+          <div className="bg-[#F8F9FA] min-h-[calc(100vh-48px)]">
+            <PaymentSuccess readingId={reading.id} />
+          </div>
+        </SajuLayout>
       );
     case "failed":
       return (
-        <main className="min-h-screen bg-[#F8F9FA]">
-          <SajuNavbar />
-          <div className="max-w-2xl mx-auto px-5 py-20 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-[#FFF0F0] rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#EF4444"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="10" />
-                <line x1="15" y1="9" x2="9" y2="15" />
-                <line x1="9" y1="9" x2="15" y2="15" />
-              </svg>
+        <SajuLayout>
+          <div className="bg-[#F8F9FA] min-h-[calc(100vh-48px)]">
+            <div className="max-w-2xl mx-auto px-5 py-20 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-[#FFF0F0] rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#EF4444"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-bold text-[#191F28] mb-2">
+                분석 중 오류가 발생했습니다
+              </h2>
+              <p className="text-sm text-[#8B95A1] mb-6">
+                일시적인 문제일 수 있습니다. 다시 시도해주세요.
+              </p>
+              <PaymentSuccess readingId={reading.id} />
             </div>
-            <h2 className="text-lg font-bold text-[#191F28] mb-2">
-              분석 중 오류가 발생했습니다
-            </h2>
-            <p className="text-sm text-[#8B95A1] mb-6">
-              일시적인 문제일 수 있습니다. 다시 시도해주세요.
-            </p>
-            <PaymentSuccess readingId={reading.id} />
           </div>
-        </main>
+        </SajuLayout>
       );
     case "preview":
     default:
       // 로그인 유저: 결제 없이 바로 분석 진행
       if (user) {
         return (
-          <main className="min-h-screen bg-[#F8F9FA]">
-            <SajuNavbar />
-            <PaymentSuccess readingId={reading.id} />
-          </main>
+          <SajuLayout>
+            <div className="bg-[#F8F9FA] min-h-[calc(100vh-48px)]">
+              <PaymentSuccess readingId={reading.id} />
+            </div>
+          </SajuLayout>
         );
       }
       // 비로그인: 미리보기 + 결제 화면
       return (
-        <main className="min-h-screen bg-[#F8F9FA]">
-          <SajuNavbar />
-          <div className="max-w-2xl mx-auto px-5 py-8 pb-40">
-            <ReadingPreview reading={reading} locale={locale} />
+        <SajuLayout>
+          <div className="bg-[#F8F9FA] min-h-[calc(100vh-48px)]">
+            <div className="max-w-2xl mx-auto px-5 py-8 pb-40">
+              <ReadingPreview reading={reading} locale={locale} />
+            </div>
           </div>
-        </main>
+        </SajuLayout>
       );
   }
 }

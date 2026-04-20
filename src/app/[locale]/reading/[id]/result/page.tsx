@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { redirect } from "@/i18n/routing";
 import { getReading } from "@/services/saju/actions";
-import SajuNavbar from "@/components/saju/landing/SajuNavbar";
+import SajuLayout from "@/components/saju/layout/SajuLayout";
 import FiveElementChart from "@/components/saju/preview/FiveElementChart";
 import FullAnalysis from "@/components/saju/result/FullAnalysis";
 import PdfDownloadButton from "@/components/saju/result/PdfDownloadButton";
@@ -34,10 +34,8 @@ export default async function ResultPage({
   const elements = reading.five_elements;
 
   return (
-    <div className="min-h-screen bg-[#F7F8FA]">
-      <SajuNavbar />
-
-      <main className="max-w-3xl mx-auto px-5 py-8 flex flex-col gap-6">
+    <SajuLayout>
+      <main className="max-w-3xl mx-auto px-5 py-8 flex flex-col gap-6 bg-[#F7F8FA] min-h-[calc(100vh-48px)]">
         {/* 사주 정보 요약 */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h1 className="text-xl font-bold text-[#191F28]">
@@ -71,6 +69,6 @@ export default async function ResultPage({
         {/* 공유 카드 */}
         <ShareCard readingId={reading.id} name={reading.name} />
       </main>
-    </div>
+    </SajuLayout>
   );
 }
