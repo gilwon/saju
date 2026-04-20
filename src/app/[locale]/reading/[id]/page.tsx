@@ -13,11 +13,10 @@ export default async function ReadingPage({ params }: PageProps) {
   const { locale, id } = await params;
   const supabase = await createClient();
 
-  const { data: reading, error } = await supabase
-    .from("saju_readings")
-    .select("*")
-    .eq("id", id)
-    .single<SajuReading>();
+  const [{ data: reading, error }, { data: { user } }] = await Promise.all([
+    supabase.from("saju_readings").select("*").eq("id", id).single<SajuReading>(),
+    supabase.auth.getUser(),
+  ]);
 
   if (error || !reading) {
     redirect(`/${locale}`);
@@ -71,6 +70,16 @@ export default async function ReadingPage({ params }: PageProps) {
       );
     case "preview":
     default:
+      // 로그인 유저: 결제 없이 바로 분석 진행
+      if (user) {
+        return (
+          <main className="min-h-screen bg-[#F8F9FA]">
+            <SajuNavbar />
+            <PaymentSuccess readingId={reading.id} />
+          </main>
+        );
+      }
+      // 비로그인: 미리보기 + 결제 화면
       return (
         <main className="min-h-screen bg-[#F8F9FA]">
           <SajuNavbar />

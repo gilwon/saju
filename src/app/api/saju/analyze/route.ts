@@ -60,8 +60,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 결제 확인
-    if (reading.status !== 'paid') {
+    // 결제 확인 (로그인 유저는 preview 상태에서도 분석 허용)
+    const isLoggedIn = !!authUser;
+    if (reading.status !== 'paid' && !(isLoggedIn && reading.status === 'preview')) {
       return NextResponse.json(
         { error: 'Payment required. Current status: ' + reading.status },
         { status: 403 },
