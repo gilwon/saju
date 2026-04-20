@@ -141,7 +141,7 @@ export default function ChatRoom({
     setIsAnalyzing(true);
     setGuestReadingId(characterId, newReadingId);
     setTimeout(() => {
-      window.location.href = `${window.location.pathname}?r=${newReadingId}`;
+      router.push(`/chat/${characterId}?r=${newReadingId}`);
     }, 1500);
   };
 

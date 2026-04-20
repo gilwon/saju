@@ -61,8 +61,10 @@ export default async function SajuLayout({ children, currentReading }: SajuLayou
 
     if (readings) {
       chatHistory = readings.map((r) => {
-        const charId = (r.character_id || 'charon_m') as CharacterType;
-        const char = CHARACTERS[charId as keyof typeof CHARACTERS] || CHARACTERS.charon_m;
+        const rawCharId = r.character_id as string;
+        const charExists = !!CHARACTERS[rawCharId as keyof typeof CHARACTERS];
+        const charId = (charExists ? rawCharId : 'charon_m') as CharacterType;
+        const char = CHARACTERS[charId];
         return {
           id: r.id,
           character_id: charId,
