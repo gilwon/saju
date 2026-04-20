@@ -25,11 +25,18 @@ export default function ConcernSelector({
   const [selected, setSelected] = useState<ConcernId[]>([]);
   const [error, setError] = useState("");
 
+  const MAX_CONCERNS = 3;
+
   const toggle = (id: ConcernId) => {
     setError("");
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    );
+    setSelected((prev) => {
+      if (prev.includes(id)) return prev.filter((c) => c !== id);
+      if (prev.length >= MAX_CONCERNS) {
+        setError(`최대 ${MAX_CONCERNS}개까지 선택할 수 있어요`);
+        return prev;
+      }
+      return [...prev, id];
+    });
   };
 
   const handleSubmit = () => {
@@ -47,7 +54,7 @@ export default function ConcernSelector({
           어떤 고민이 있으신가요?
         </h2>
         <p className="mt-2 text-[#8B95A1] text-sm">
-          궁금한 분야를 선택하면 더 정확한 분석을 받을 수 있어요
+          궁금한 분야를 선택하면 더 정확한 분석을 받을 수 있어요 (최대 3개)
         </p>
       </div>
 
