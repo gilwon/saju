@@ -55,7 +55,7 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com https://*.paddle.com https://*.profitwell.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.paddle.com",
               "img-src 'self' data: blob: https://*.supabase.co https://lh3.googleusercontent.com https://*.paddle.com https://*.profitwell.com",
-              "font-src 'self' https://fonts.gstatic.com https://*.paddle.com",
+              "font-src 'self' https://fonts.gstatic.com https://*.paddle.com https://cdn.jsdelivr.net",
               "connect-src 'self' https://*.supabase.co https://accounts.google.com https://generativelanguage.googleapis.com wss://*.supabase.co https://*.paddle.com https://*.profitwell.com",
               "frame-src 'self' https://accounts.google.com https://*.paddle.com https://buy.paddle.com",
               "frame-ancestors 'self' https://*.paddle.com https://buy.paddle.com",
