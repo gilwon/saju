@@ -66,7 +66,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-noto-sans-kr);
+  --font-sans: 'Paperozi', var(--font-noto-sans-kr), sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-paperozi: 'Paperozi', var(--font-noto-sans-kr), sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
