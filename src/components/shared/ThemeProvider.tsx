@@ -35,10 +35,18 @@ export function ThemeProvider({
   storageKey = "theme",
   disableTransitionOnChange = false,
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return defaultTheme;
-    return (localStorage.getItem(storageKey) as Theme) || defaultTheme;
-  });
+  const [theme, setThemeState] = useState<Theme>(defaultTheme);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey) as Theme;
+      if (stored === "dark" || stored === "light") {
+        setThemeState(stored);
+      }
+    } catch {
+      // ignore
+    }
+  }, [storageKey]);
 
   useEffect(() => {
     const root = document.documentElement;
