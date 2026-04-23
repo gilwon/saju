@@ -55,7 +55,7 @@ export default function PaddleCheckout({
             결제 준비 중...
           </span>
         ) : (
-          `${product.name} ${product.amount.toLocaleString()}원 결제하기`
+          `${product.name} ${product.amount.toLocaleString('ko-KR')}원 결제하기`
         )}
       </Button>
       <p className="text-center text-xs text-[#8B95A1] mt-3">

@@ -118,7 +118,7 @@ export default function CoinShopClient({ totalCoins, userId, userEmail }: CoinSh
             </div>
             <div className="text-right">
               <span className="font-bold text-gray-200 text-base">
-                {pack.price.toLocaleString()}원
+                {pack.price.toLocaleString('ko-KR')}원
               </span>
             </div>
           </button>

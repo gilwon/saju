@@ -606,11 +606,11 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean;
 }) {
-  // Use deterministic widths for skeleton loading
   const widths = ["50%", "60%", "70%", "80%", "90%"];
-  const [widthIndex] = React.useState(() =>
-    Math.floor(Math.random() * widths.length)
-  );
+  const [widthIndex, setWidthIndex] = React.useState(0);
+  React.useEffect(() => {
+    setWidthIndex(Math.floor(Math.random() * widths.length));
+  }, []);
   const width = widths[widthIndex];
 
   return (

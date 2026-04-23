@@ -368,7 +368,7 @@ export default function LoginSidebar({ user, chatHistory = [], currentReading, p
                             ? `${item.reading_name} 사주 분석`
                             : (item.title || `${item.character_name} · ${item.reading_name}`)}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-[11px] text-muted-foreground" suppressHydrationWarning>
                           {new Date(item.updated_at).toLocaleDateString('ko-KR')}
                         </p>
                       </div>

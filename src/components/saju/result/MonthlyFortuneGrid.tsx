@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import type { MonthlyFortune } from "@/types/saju";
 
 interface MonthlyFortuneGridProps {
@@ -9,7 +10,11 @@ interface MonthlyFortuneGridProps {
 export default function MonthlyFortuneGrid({
   monthlyFortune,
 }: MonthlyFortuneGridProps) {
-  const currentMonth = new Date().getMonth() + 1;
+  const [currentMonth, setCurrentMonth] = useState(0);
+
+  useEffect(() => {
+    setCurrentMonth(new Date().getMonth() + 1);
+  }, []);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
