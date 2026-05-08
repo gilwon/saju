@@ -93,6 +93,7 @@ next-env.d.ts
 
 
 # ============================================
-# Supabase
+# Supabase (로컬 환경 파일만 제외 — migrations는 추적)
 # ============================================
-supabase/
+supabase/.branches
+supabase/.temp

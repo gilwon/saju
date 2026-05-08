@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { getServerUser } from "@/utils/supabase/get-user";
 import { getChatMessages } from "@/services/saju/chat-actions";
@@ -56,6 +57,9 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
   // 비회원(게스트) 플로우
   if (!user) {
     if (readingIdParam && isNewChat !== "true") {
+      const cookieStore = await cookies();
+      const guestSessionId = cookieStore.get("guest_session_id")?.value;
+
       const { data: guestReading } = await supabase
         .from("saju_readings")
         .select("*")
@@ -64,6 +68,12 @@ export default async function ChatPage({ params, searchParams }: ChatPageProps) 
         .single();
 
       if (guestReading) {
+        // 게스트 소유권 검증: guest_session_id 쿠키가 일치해야 함
+        const readingGuestSessionId = (guestReading as Record<string, unknown>).guest_session_id as string | null;
+        if (readingGuestSessionId !== null && readingGuestSessionId !== guestSessionId) {
+          redirect(`/${locale}`);
+        }
+
         const typedReading = guestReading as SajuReading;
         const { data: chatMessages } = await getChatMessages(guestReading.id);
         const readingInfo = buildReadingInfo(typedReading, characterId as CharacterType);

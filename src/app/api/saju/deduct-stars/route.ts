@@ -4,8 +4,8 @@ import { createClient } from '@/utils/supabase/server';
 export async function POST(req: NextRequest) {
   const { amount, readingId } = await req.json();
 
-  if (!amount) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  if (typeof amount !== 'number' || !Number.isInteger(amount) || amount <= 0) {
+    return NextResponse.json({ error: 'amount must be a positive integer' }, { status: 400 });
   }
 
   const supabase = await createClient();

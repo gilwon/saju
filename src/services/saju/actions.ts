@@ -330,6 +330,52 @@ export async function migrateGuestReadings(
 }
 
 /**
+ * 무료 리포트 생성을 위해 reading 상태를 paid로 전환합니다. (서버 측에서 소유권 검증 후 전환)
+ */
+export async function initializeFreeReportStatus(
+  readingId: string
+): Promise<{ error?: string }> {
+  const parsed = z.string().uuid().safeParse(readingId);
+  if (!parsed.success) return { error: "Invalid reading ID" };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data: reading } = await supabase
+    .from("saju_readings")
+    .select("user_id, guest_session_id, status")
+    .eq("id", readingId)
+    .single();
+
+  if (!reading) return { error: "Reading not found" };
+  if (!["pending", "preview"].includes(reading.status as string)) {
+    return { error: "이미 처리된 분석입니다." };
+  }
+
+  if (user) {
+    if (reading.user_id !== null && reading.user_id !== user.id) {
+      return { error: "Forbidden" };
+    }
+  } else {
+    if (reading.user_id !== null) return { error: "Forbidden" };
+    const cookieStore = await cookies();
+    const guestSessionId = cookieStore.get("guest_session_id")?.value;
+    const rgsid = (reading as Record<string, unknown>).guest_session_id as string | null;
+    if (rgsid !== null && rgsid !== guestSessionId) {
+      return { error: "Forbidden" };
+    }
+  }
+
+  const { error } = await supabase
+    .from("saju_readings")
+    .update({ status: "paid", updated_at: new Date().toISOString() })
+    .eq("id", readingId);
+
+  if (error) return { error: "상태 업데이트에 실패했습니다." };
+  return {};
+}
+
+/**
  * 사주 분석 레코드에 user_id를 연결합니다. (결제 + 로그인 후 호출)
  */
 export async function linkReadingToUser(

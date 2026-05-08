@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { createReading } from '@/services/saju/actions';
+import { createReading, initializeFreeReportStatus } from '@/services/saju/actions';
 import { updateReadingMeta } from '@/services/saju/chat-actions';
 import { Link } from '@/i18n/routing';
 
@@ -143,15 +143,10 @@ export default function SajuReportClient({
 
       setProgress(15);
 
-      // 2. Status를 paid로 변경 (무료 제공이지만 PDF 생성을 위해 paid 상태 필요)
-      const statusRes = await fetch('/api/saju/update-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ readingId: reading.id, status: 'paid' }),
-      });
-
-      if (!statusRes.ok) {
-        throw new Error('상태 업데이트에 실패했습니다.');
+      // 2. Status를 paid로 변경 (서버 액션으로 소유권 검증 후 전환)
+      const { error: statusError } = await initializeFreeReportStatus(reading.id);
+      if (statusError) {
+        throw new Error(statusError);
       }
 
       setProgress(20);
